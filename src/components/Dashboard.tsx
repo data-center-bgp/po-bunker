@@ -1,5 +1,6 @@
 import { useState } from "react";
 import Sidebar, { type TabType } from "./Sidebar";
+import OrdersPage from "./orders/OrderPage";
 
 const Dashboard = () => {
   const [activeTab, setActiveTab] = useState<TabType>("overview");
@@ -121,38 +122,7 @@ const Dashboard = () => {
         );
 
       case "orders":
-        return (
-          <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-gray-900">Orders</h2>
-            <div className="bg-white rounded-lg shadow-md p-6 border border-amber-100">
-              <p className="text-gray-600">
-                Orders list will be displayed here...
-              </p>
-              <div className="mt-4 space-y-3">
-                {[1, 2, 3].map((item) => (
-                  <div
-                    key={item}
-                    className="p-4 border border-gray-200 rounded-lg hover:border-amber-300 transition-colors"
-                  >
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <p className="font-medium text-gray-900">
-                          Order #{1000 + item}
-                        </p>
-                        <p className="text-sm text-gray-600">
-                          Placeholder order item
-                        </p>
-                      </div>
-                      <span className="px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-sm font-medium">
-                        Pending
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        );
+        return <OrdersPage />;
 
       case "settings":
         return (
