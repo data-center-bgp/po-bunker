@@ -1,4 +1,6 @@
 import { useState, type FormEvent } from "react";
+import { authApi } from "../services/api";
+import { useAuth } from "../contexts/AuthContext";
 
 interface LoginFormData {
   email: string;
@@ -11,6 +13,7 @@ interface FormErrors {
 }
 
 const Login = () => {
+  const { login } = useAuth();
   const [formData, setFormData] = useState<LoginFormData>({
     email: "",
     password: "",
@@ -67,19 +70,23 @@ const Login = () => {
     if (!validateForm()) return;
 
     setIsLoading(true);
+    setErrors({});
 
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      const response = await authApi.login({
+        email: formData.email,
+        password: formData.password,
+      });
 
-      // Here you would typically make an API call to authenticate
-      console.log("Login attempt:", formData);
+      // Store token and user info
+      login(response.access_token, response.user_id, response.login);
 
-      // Handle successful login
-      alert("Login successful!");
+      // Redirect will happen automatically via App.tsx
     } catch (error) {
       console.error("Login error:", error);
-      setErrors({ email: "Invalid email or password" });
+      setErrors({ 
+        email: error instanceof Error ? error.message : "Invalid email or password" 
+      });
     } finally {
       setIsLoading(false);
     }

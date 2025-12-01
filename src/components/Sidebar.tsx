@@ -1,4 +1,5 @@
 import { type ReactNode } from "react";
+import { useAuth } from "../contexts/AuthContext";
 
 export type TabType = "overview" | "orders" | "settings";
 
@@ -23,6 +24,8 @@ const Sidebar = ({
   onTabChange,
   onLogout,
 }: SidebarProps) => {
+  const { user } = useAuth();
+
   const tabs: Tab[] = [
     {
       id: "overview",
@@ -89,6 +92,10 @@ const Sidebar = ({
     },
   ];
 
+  const getInitials = (email: string) => {
+    return email.charAt(0).toUpperCase();
+  };
+
   return (
     <aside
       className={`${
@@ -147,12 +154,18 @@ const Sidebar = ({
         <div className="p-4">
           <div className="flex items-center mb-3">
             <div className="w-10 h-10 bg-amber-500 rounded-full flex items-center justify-center shrink-0">
-              <span className="text-white font-semibold">U</span>
+              <span className="text-white font-semibold">
+                {user ? getInitials(user.email) : "U"}
+              </span>
             </div>
             {isOpen && (
-              <div className="ml-3">
-                <p className="text-sm font-medium text-gray-900">User Name</p>
-                <p className="text-xs text-gray-600">user@example.com</p>
+              <div className="ml-3 overflow-hidden">
+                <p className="text-sm font-medium text-gray-900 truncate">
+                  User
+                </p>
+                <p className="text-xs text-gray-600 truncate">
+                  {user?.email || "user@example.com"}
+                </p>
               </div>
             )}
           </div>

@@ -1,15 +1,15 @@
 import { useState } from "react";
+import { useAuth } from "../contexts/AuthContext";
 import Sidebar, { type TabType } from "./Sidebar";
 import OrdersPage from "./orders/OrderPage";
 
 const Dashboard = () => {
+  const { logout } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>("overview");
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   const handleLogout = () => {
-    // Handle logout logic here
-    console.log("Logging out...");
-    alert("Logged out successfully!");
+    logout();
   };
 
   const renderContent = () => {
