@@ -29,10 +29,33 @@ export interface PurchaseOrdersResponse {
 export interface Vessel {
   id: number;
   name: string;
+  type_id: number;
+  type_name: string;
+  gross_tonage: number;
+  call_sign: string | false;
+  imo_no: string | false;
+  mmsi_no: string | false;
+  registered_year: string | false;
+  registered_place: string | false;
+  operator_id: number | null;
+  operator_name: string | null;
+  owner_id: number | null;
+  owner_name: string | null;
+  bussines_unit_id: number | null;
+  bussines_unit_id_name: string | null;
+  flag_id: number | null;
+  flag_name: string | null;
+  last_docking: string | null;
+  intermediate_docking: string | null;
+  annual_docking: string | null;
+  status_doc_office: string;
+  active: boolean;
+  create_date: string;
+  write_date: string;
 }
 
 export interface VesselsResponse {
-  vessels: Vessel[];
+  shipping_vessels: Vessel[];
 }
 
 export interface Partner {
