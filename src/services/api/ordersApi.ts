@@ -1,0 +1,139 @@
+import { API_URL, getAuthHeaders } from './config';
+import { tokenManager } from './tokenManager';
+
+export interface OrderLine {
+  product_id: [number, string]; // [id, name]
+  product_qty: number;
+  price_unit: number;
+  vessel_id: [number, string]; // [id, name]
+}
+
+export interface PurchaseOrder {
+  id: number;
+  name: string; // PO number
+  partner_id: [number, string]; // [id, customer name]
+  order_type: string;
+  date_order: string;
+  date_planned: string;
+  state: string; // order status
+  order_line: OrderLine[];
+}
+
+export interface PurchaseOrdersResponse {
+  purchase_orders: PurchaseOrder[];
+  total_count: number;
+  page: number;
+  limit: number;
+}
+
+export interface Vessel {
+  id: number;
+  name: string;
+}
+
+export interface VesselsResponse {
+  vessels: Vessel[];
+}
+
+export interface Partner {
+  id: number;
+  name: string;
+}
+
+export interface PartnersResponse {
+  partners: Partner[];
+}
+
+export interface Product {
+  id: number;
+  name: string;
+}
+
+export interface ProductsResponse {
+  products: Product[];
+}
+
+export interface CreateOrderRequest {
+  partner_id: number;
+  order_type: string;
+  date_order: string;
+  date_planned: string;
+  order_lines: {
+    product_id: number;
+    product_qty: number;
+    price_unit: number;
+    vessel_id: number;
+  }[];
+}
+
+export const ordersApi = {
+  getOrders: async (page: number = 1, limit: number = 10): Promise<PurchaseOrdersResponse> => {
+    const token = tokenManager.getToken();
+    
+    if (!token) {
+      throw new Error('No access token found');
+    }
+
+    const response = await fetch(`${API_URL}/api/purchase-orders?page=${page}&limit=${limit}`, {
+      method: 'GET',
+      headers: getAuthHeaders(token),
+    });
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        throw new Error('Unauthorized. Please login again.');
+      }
+      const errorText = await response.text();
+      throw new Error(errorText || 'Failed to fetch orders');
+    }
+
+    return response.json();
+  },
+
+  getVessels: async (): Promise<VesselsResponse> => {
+    const token = tokenManager.getToken();
+    
+    if (!token) {
+      throw new Error('No access token found');
+    }
+
+    const response = await fetch(`${API_URL}/api/shipping_vessels`, {
+      method: 'GET',
+      headers: getAuthHeaders(token),
+    });
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        throw new Error('Unauthorized. Please login again.');
+      }
+      const errorText = await response.text();
+      throw new Error(errorText || 'Failed to fetch vessels');
+    }
+
+    return response.json();
+  },
+
+  createOrder: async (orderData: CreateOrderRequest): Promise<PurchaseOrder> => {
+    const token = tokenManager.getToken();
+    
+    if (!token) {
+      throw new Error('No access token found');
+    }
+
+    const response = await fetch(`${API_URL}/api/purchase-orders`, {
+      method: 'POST',
+      headers: getAuthHeaders(token),
+      body: JSON.stringify(orderData),
+    });
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        throw new Error('Unauthorized. Please login again.');
+      }
+      const errorText = await response.text();
+      throw new Error(errorText || 'Failed to create order');
+    }
+
+    return response.json();
+  },
+};
