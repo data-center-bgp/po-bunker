@@ -1,5 +1,11 @@
-import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
-import { tokenManager } from '../services/api';
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  type ReactNode,
+} from "react";
+import { tokenManager } from "@/services/api";
 
 interface User {
   userId: number;
@@ -39,7 +45,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated: !!user, login, logout }}>
+    <AuthContext.Provider
+      value={{ user, isAuthenticated: !!user, login, logout }}
+    >
       {children}
     </AuthContext.Provider>
   );
@@ -48,7 +56,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
 };

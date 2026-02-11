@@ -1,15 +1,48 @@
 import { useState, useEffect, type FormEvent } from "react";
-import { ordersApi, type Vessel } from "../../services/api";
+import {
+  ordersApi,
+  type Vessel,
+  type Company,
+  type Partner,
+  type Product,
+} from "@/services/api";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
+import { AlertCircle, Loader2, Package } from "lucide-react";
 
 interface OrderFormData {
+  companyId: string;
   partnerId: string;
   orderType: string;
-  dateOrder: string;
-  datePlanned: string;
   productId: string;
+  dateOrder: string;
   vesselId: string;
   quantity: string;
   unitPrice: string;
+  project: string;
+  notes: string;
+  categoryId: string;
+  codeBudgetId: string;
+  uomId: string;
 }
 
 interface OrderFormProps {
@@ -18,27 +51,42 @@ interface OrderFormProps {
   onCancel: () => void;
 }
 
-const OrderForm = ({ isOpen, onSuccess, onCancel }: OrderFormProps) => {
-  const [formData, setFormData] = useState<OrderFormData>({
-    partnerId: "",
-    orderType: "",
-    dateOrder: "",
-    datePlanned: "",
-    productId: "",
-    vesselId: "",
-    quantity: "",
-    unitPrice: "",
-  });
+const initialFormData: OrderFormData = {
+  companyId: "",
+  partnerId: "",
+  orderType: "",
+  productId: "",
+  dateOrder: "",
+  vesselId: "",
+  quantity: "",
+  unitPrice: "",
+  project: "",
+  notes: "",
+  categoryId: "",
+  codeBudgetId: "",
+  uomId: "",
+};
 
+const OrderForm = ({ isOpen, onSuccess, onCancel }: OrderFormProps) => {
+  const [formData, setFormData] = useState<OrderFormData>(initialFormData);
   const [vessels, setVessels] = useState<Vessel[]>([]);
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [partners, setPartners] = useState<Partner[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingVessels, setLoadingVessels] = useState(true);
+  const [loadingCompanies, setLoadingCompanies] = useState(true);
+  const [loadingPartners, setLoadingPartners] = useState(true);
+  const [loadingProducts, setLoadingProducts] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
-  // Fetch vessels when modal opens
   useEffect(() => {
     if (isOpen) {
       fetchVessels();
+      fetchCompanies();
+      fetchPartners();
+      fetchProducts();
     }
   }, [isOpen]);
 
@@ -46,7 +94,6 @@ const OrderForm = ({ isOpen, onSuccess, onCancel }: OrderFormProps) => {
     try {
       setLoadingVessels(true);
       const response = await ordersApi.getVessels();
-      console.log("Vessels response:", response);
       setVessels(response.shipping_vessels || []);
     } catch (err) {
       console.error("Error fetching vessels:", err);
@@ -56,14 +103,78 @@ const OrderForm = ({ isOpen, onSuccess, onCancel }: OrderFormProps) => {
     }
   };
 
-  const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-  ) => {
+  const fetchCompanies = async () => {
+    try {
+      setLoadingCompanies(true);
+      const response = await ordersApi.getCompanies();
+      setCompanies(response.companies || []);
+    } catch (err) {
+      console.error("Error fetching companies:", err);
+      setError(
+        err instanceof Error ? err.message : "Failed to fetch companies",
+      );
+    } finally {
+      setLoadingCompanies(false);
+    }
+  };
+
+  const fetchPartners = async () => {
+    try {
+      setLoadingPartners(true);
+      const response = await ordersApi.getPartners();
+      setPartners(response.partners || []);
+    } catch (err) {
+      console.error("Error fetching partners:", err);
+      setError(err instanceof Error ? err.message : "Failed to fetch partners");
+    } finally {
+      setLoadingPartners(false);
+    }
+  };
+
+  const fetchProducts = async () => {
+    try {
+      setLoadingProducts(true);
+      const response = await ordersApi.getProducts();
+      setProducts(response.products || []);
+    } catch (err) {
+      console.error("Error fetching products:", err);
+      setError(err instanceof Error ? err.message : "Failed to fetch products");
+    } finally {
+      setLoadingProducts(false);
+    }
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSelectChange = (name: string, value: string) => {
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleProductChange = (productId: string) => {
+    const product = products.find((p) => p.id === parseInt(productId));
+
+    if (product) {
+      setSelectedProduct(product);
+      setFormData((prev) => ({
+        ...prev,
+        productId: productId,
+        categoryId: product.categ_id.toString(),
+        codeBudgetId: product.code_budget_id?.toString() || "",
+        uomId: product.uom_id.toString(),
+      }));
+    } else {
+      setSelectedProduct(null);
+      setFormData((prev) => ({
+        ...prev,
+        productId: "",
+        categoryId: "",
+        codeBudgetId: "",
+        uomId: "",
+      }));
+    }
   };
 
   const handleSubmit = async (e: FormEvent) => {
@@ -73,32 +184,34 @@ const OrderForm = ({ isOpen, onSuccess, onCancel }: OrderFormProps) => {
 
     try {
       const orderData = {
+        company_id: parseInt(formData.companyId),
         partner_id: parseInt(formData.partnerId),
         order_type: formData.orderType,
-        date_order: new Date(formData.dateOrder).toISOString(),
-        date_planned: new Date(formData.datePlanned).toISOString(),
+        date_order: formData.dateOrder.replace("T", " ") + ":00",
+        notes: formData.notes,
+        picking_type_id: 1,
         order_lines: [
           {
             product_id: parseInt(formData.productId),
             product_qty: parseFloat(formData.quantity),
             price_unit: parseFloat(formData.unitPrice),
+            total_price: parseFloat(formData.unitPrice),
             vessel_id: parseInt(formData.vesselId),
+            category_id: parseInt(formData.categoryId),
+            code_budget_id: formData.codeBudgetId
+              ? parseInt(formData.codeBudgetId)
+              : null,
+            uom_id: parseInt(formData.uomId),
+            project: formData.project,
           },
         ],
       };
 
+      console.log("Submitting order data:", JSON.stringify(orderData, null, 2));
+
       await ordersApi.createOrder(orderData);
-      // Reset form
-      setFormData({
-        partnerId: "",
-        orderType: "",
-        dateOrder: "",
-        datePlanned: "",
-        productId: "",
-        vesselId: "",
-        quantity: "",
-        unitPrice: "",
-      });
+      setFormData(initialFormData);
+      setSelectedProduct(null);
       onSuccess();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create order");
@@ -109,259 +222,348 @@ const OrderForm = ({ isOpen, onSuccess, onCancel }: OrderFormProps) => {
   };
 
   const handleCancel = () => {
-    // Reset form and error when closing
-    setFormData({
-      partnerId: "",
-      orderType: "",
-      dateOrder: "",
-      datePlanned: "",
-      productId: "",
-      vesselId: "",
-      quantity: "",
-      unitPrice: "",
-    });
+    setFormData(initialFormData);
+    setSelectedProduct(null);
     setError(null);
     onCancel();
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
-      {/* Backdrop */}
-      <div
-        className="fixed inset-0 bg-black/50 transition-opacity"
-        onClick={handleCancel}
-      ></div>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && handleCancel()}>
+      <DialogContent className="max-w-4xl max-h-[90vh] p-0">
+        <DialogHeader className="px-6 pt-6">
+          <DialogTitle className="flex items-center gap-2">
+            <Package className="h-5 w-5" />
+            Create New Order
+          </DialogTitle>
+          <DialogDescription>
+            Fill in the details below to create a new purchase order.
+          </DialogDescription>
+        </DialogHeader>
 
-      {/* Modal */}
-      <div className="flex min-h-full items-center justify-center p-4">
-        <div className="relative bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-          {/* Header */}
-          <div className="sticky top-0 bg-white border-b border-amber-100 px-6 py-4 flex items-center justify-between">
-            <h3 className="text-xl font-semibold text-gray-900">
-              Create New Order
-            </h3>
-            <button
-              onClick={handleCancel}
-              className="text-gray-400 hover:text-gray-600 transition-colors"
-            >
-              <svg
-                className="h-6 w-6"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
-            </button>
-          </div>
+        <Separator />
 
-          {/* Body */}
+        <ScrollArea className="max-h-[calc(90vh-200px)]">
           <div className="px-6 py-4">
             {error && (
-              <div className="mb-4 bg-red-50 border border-red-200 rounded-lg p-4">
-                <p className="text-red-700 text-sm">{error}</p>
+              <div className="mb-4 flex items-center gap-2 rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
+                <AlertCircle className="h-4 w-4 shrink-0" />
+                {error}
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Customer/Partner ID */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Customer <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="number"
-                    name="partnerId"
-                    value={formData.partnerId}
-                    onChange={handleInputChange}
-                    placeholder="Enter customer ID"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                    required
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Temporary: Enter customer ID (will be dropdown later)
-                  </p>
-                </div>
+            <form id="order-form" onSubmit={handleSubmit} className="space-y-6">
+              {/* Order Details Section */}
+              <div>
+                <h4 className="text-sm font-semibold text-foreground mb-3">
+                  Order Details
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Customer */}
+                  <div className="space-y-2">
+                    <Label>
+                      Customer <span className="text-destructive">*</span>
+                    </Label>
+                    <Select
+                      value={formData.partnerId}
+                      onValueChange={(val) =>
+                        handleSelectChange("partnerId", val)
+                      }
+                      disabled={loadingPartners}
+                    >
+                      <SelectTrigger>
+                        <SelectValue
+                          placeholder={
+                            loadingPartners ? "Loading..." : "Select customer"
+                          }
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {partners.map((partner) => (
+                          <SelectItem
+                            key={partner.id}
+                            value={partner.id.toString()}
+                          >
+                            {partner.display_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-                {/* Order Type */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Order Type <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    name="orderType"
-                    value={formData.orderType}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                    required
-                  >
-                    <option value="">Select order type</option>
-                    <option value="logistic">Logistic</option>
-                    <option value="bbm">BBM</option>
-                    <option value="fresh_water">Fresh Water</option>
-                  </select>
-                </div>
+                  {/* Company */}
+                  <div className="space-y-2">
+                    <Label>
+                      Company <span className="text-destructive">*</span>
+                    </Label>
+                    <Select
+                      value={formData.companyId}
+                      onValueChange={(val) =>
+                        handleSelectChange("companyId", val)
+                      }
+                      disabled={loadingCompanies}
+                    >
+                      <SelectTrigger>
+                        <SelectValue
+                          placeholder={
+                            loadingCompanies ? "Loading..." : "Select company"
+                          }
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {companies.map((company) => (
+                          <SelectItem
+                            key={company.id}
+                            value={company.id.toString()}
+                          >
+                            {company.code_company} - {company.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-                {/* Order Date */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Order Date <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="date"
-                    name="dateOrder"
-                    value={formData.dateOrder}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                    required
-                  />
-                </div>
+                  {/* Order Type */}
+                  <div className="space-y-2">
+                    <Label>
+                      Order Type <span className="text-destructive">*</span>
+                    </Label>
+                    <Select
+                      value={formData.orderType}
+                      onValueChange={(val) =>
+                        handleSelectChange("orderType", val)
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select order type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="bunker_fuel">Bunker Fuel</SelectItem>
+                        <SelectItem value="bunker_water">
+                          Bunker Fresh Water
+                        </SelectItem>
+                        <SelectItem value="logistic">Logistic</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-                {/* Planned Date */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Planned Date <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="date"
-                    name="datePlanned"
-                    value={formData.datePlanned}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                    required
-                  />
-                </div>
-
-                {/* Product ID */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Product <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="number"
-                    name="productId"
-                    value={formData.productId}
-                    onChange={handleInputChange}
-                    placeholder="Enter product ID"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                    required
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Temporary: Enter product ID (will be dropdown later)
-                  </p>
-                </div>
-
-                {/* Vessel */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Vessel <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    name="vesselId"
-                    value={formData.vesselId}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                    required
-                    disabled={loadingVessels}
-                  >
-                    <option value="">
-                      {loadingVessels ? "Loading vessels..." : "Select vessel"}
-                    </option>
-                    {vessels.map((vessel) => (
-                      <option key={vessel.id} value={vessel.id}>
-                        {vessel.type_name} - {vessel.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Quantity */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Quantity <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    name="quantity"
-                    value={formData.quantity}
-                    onChange={handleInputChange}
-                    placeholder="Enter quantity"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                    required
-                  />
-                </div>
-
-                {/* Unit Price */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Unit Price <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    name="unitPrice"
-                    value={formData.unitPrice}
-                    onChange={handleInputChange}
-                    placeholder="Enter unit price"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                    required
-                  />
+                  {/* Order Date */}
+                  <div className="space-y-2">
+                    <Label htmlFor="dateOrder">
+                      Order Date & Time{" "}
+                      <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      type="datetime-local"
+                      id="dateOrder"
+                      name="dateOrder"
+                      value={formData.dateOrder}
+                      onChange={handleInputChange}
+                      required
+                    />
+                  </div>
                 </div>
               </div>
 
-              {/* Footer */}
-              <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200 mt-6">
-                <button
-                  type="button"
-                  onClick={handleCancel}
-                  disabled={loading}
-                  className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="px-6 py-2 bg-amber-500 text-white rounded-lg font-medium hover:bg-amber-600 transition-colors disabled:opacity-50 flex items-center"
-                >
-                  {loading && (
-                    <svg
-                      className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
-                      fill="none"
-                      viewBox="0 0 24 24"
+              <Separator />
+
+              {/* Product Details Section */}
+              <div>
+                <h4 className="text-sm font-semibold text-foreground mb-3">
+                  Product Details
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Product */}
+                  <div className="space-y-2">
+                    <Label>
+                      Product <span className="text-destructive">*</span>
+                    </Label>
+                    <Select
+                      value={formData.productId}
+                      onValueChange={handleProductChange}
+                      disabled={loadingProducts}
                     >
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                      ></circle>
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      ></path>
-                    </svg>
-                  )}
-                  {loading ? "Creating..." : "Create Order"}
-                </button>
+                      <SelectTrigger>
+                        <SelectValue
+                          placeholder={
+                            loadingProducts ? "Loading..." : "Select product"
+                          }
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {products.map((product) => (
+                          <SelectItem
+                            key={product.id}
+                            value={product.id.toString()}
+                          >
+                            {product.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Vessel */}
+                  <div className="space-y-2">
+                    <Label>
+                      Vessel <span className="text-destructive">*</span>
+                    </Label>
+                    <Select
+                      value={formData.vesselId}
+                      onValueChange={(val) =>
+                        handleSelectChange("vesselId", val)
+                      }
+                      disabled={loadingVessels}
+                    >
+                      <SelectTrigger>
+                        <SelectValue
+                          placeholder={
+                            loadingVessels ? "Loading..." : "Select vessel"
+                          }
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {vessels.map((vessel) => (
+                          <SelectItem
+                            key={vessel.id}
+                            value={vessel.id.toString()}
+                          >
+                            {vessel.type_name} - {vessel.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Category (auto) */}
+                  <div className="space-y-2">
+                    <Label>Category</Label>
+                    <Input
+                      value={selectedProduct?.categ_name || ""}
+                      readOnly
+                      placeholder="Auto-populated from product"
+                      className="bg-muted"
+                    />
+                  </div>
+
+                  {/* Unit (auto) */}
+                  <div className="space-y-2">
+                    <Label>Unit</Label>
+                    <Input
+                      value={selectedProduct?.uom_name || ""}
+                      readOnly
+                      placeholder="Auto-populated from product"
+                      className="bg-muted"
+                    />
+                  </div>
+
+                  {/* Code Budget (auto) */}
+                  <div className="space-y-2">
+                    <Label>Code Budget</Label>
+                    <Input
+                      value={selectedProduct?.code_budget_name || "N/A"}
+                      readOnly
+                      placeholder="Auto-populated from product"
+                      className="bg-muted"
+                    />
+                  </div>
+
+                  {/* Quantity */}
+                  <div className="space-y-2">
+                    <Label htmlFor="quantity">
+                      Quantity <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      id="quantity"
+                      name="quantity"
+                      value={formData.quantity}
+                      onChange={handleInputChange}
+                      placeholder="Enter quantity"
+                      required
+                    />
+                  </div>
+
+                  {/* Project */}
+                  <div className="space-y-2">
+                    <Label htmlFor="project">Project</Label>
+                    <Input
+                      type="text"
+                      id="project"
+                      name="project"
+                      value={formData.project}
+                      onChange={handleInputChange}
+                      placeholder="Enter project name"
+                    />
+                  </div>
+
+                  {/* Unit Price */}
+                  <div className="space-y-2">
+                    <Label htmlFor="unitPrice">
+                      Unit Price <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      id="unitPrice"
+                      name="unitPrice"
+                      value={formData.unitPrice}
+                      onChange={handleInputChange}
+                      placeholder="Enter unit price"
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Notes */}
+              <div className="space-y-2">
+                <Label htmlFor="notes">
+                  Notes <span className="text-destructive">*</span>
+                </Label>
+                <Textarea
+                  id="notes"
+                  name="notes"
+                  value={formData.notes}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, notes: e.target.value }))
+                  }
+                  rows={4}
+                  placeholder="Enter order notes"
+                  required
+                />
               </div>
             </form>
           </div>
-        </div>
-      </div>
-    </div>
+        </ScrollArea>
+
+        <Separator />
+
+        <DialogFooter className="px-6 pb-6">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleCancel}
+            disabled={loading}
+          >
+            Cancel
+          </Button>
+          <Button type="submit" form="order-form" disabled={loading}>
+            {loading ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Creating...
+              </>
+            ) : (
+              "Create Order"
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };
 

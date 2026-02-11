@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
-import { ordersApi, type PurchaseOrder } from "../../services/api";
-import OrdersTable from "./OrdersTable";
-import OrderForm from "./OrderForm";
+import { ordersApi, type PurchaseOrder } from "@/services/api";
+import OrdersTable from "@/components/orders/OrdersTable";
+import OrderForm from "@/components/orders/OrderForm";
+import { Button } from "@/components/ui/button";
+import { AlertCircle, Plus } from "lucide-react";
 
 const OrdersPage = () => {
   const [showForm, setShowForm] = useState(false);
@@ -12,7 +14,6 @@ const OrdersPage = () => {
   const [totalCount, setTotalCount] = useState(0);
   const [limit] = useState(10);
 
-  // Fetch orders on component mount and when page changes
   useEffect(() => {
     fetchOrders();
   }, [currentPage]);
@@ -25,7 +26,7 @@ const OrdersPage = () => {
       console.log("API Response:", response);
       setOrders(response.purchase_orders || []);
       setTotalCount(
-        response.total_count || response.purchase_orders?.length || 0
+        response.total_count || response.purchase_orders?.length || 0,
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to fetch orders");
@@ -37,39 +38,30 @@ const OrdersPage = () => {
 
   const handleFormSuccess = () => {
     setShowForm(false);
-    fetchOrders(); // Refresh the orders list
+    fetchOrders();
   };
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-900">Orders</h2>
-        <button
-          onClick={() => setShowForm(true)}
-          className="px-4 py-2 bg-amber-500 text-white rounded-lg font-medium hover:bg-amber-600 transition-colors flex items-center"
-        >
-          <svg
-            className="h-5 w-5 mr-2"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 4v16m8-8H4"
-            />
-          </svg>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight">Orders</h2>
+          <p className="text-muted-foreground">
+            Manage your purchase orders here.
+          </p>
+        </div>
+        <Button onClick={() => setShowForm(true)}>
+          <Plus className="h-4 w-4" />
           Add New Order
-        </button>
+        </Button>
       </div>
 
       {/* Error Message */}
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <p className="text-red-700 text-sm">{error}</p>
+        <div className="flex items-center gap-2 rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          {error}
         </div>
       )}
 

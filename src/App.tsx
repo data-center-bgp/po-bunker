@@ -1,7 +1,6 @@
-import { useAuth } from "./contexts/AuthContext";
-import Login from "./components/Login";
-import Dashboard from "./components/Dashboard";
-import "./App.css";
+import { useAuth } from "@/contexts/AuthContext";
+import Login from "@/components/Login";
+import Dashboard from "@/components/Dashboard";
 
 function App() {
   const { isAuthenticated } = useAuth();

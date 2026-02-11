@@ -1,7 +1,19 @@
 import { useState } from "react";
-import { useAuth } from "../contexts/AuthContext";
-import Sidebar, { type TabType } from "./Sidebar";
-import OrdersPage from "./orders/OrderPage";
+import { useAuth } from "@/contexts/AuthContext";
+import Sidebar, { type TabType } from "@/components/Sidebar";
+import OrdersPage from "@/components/orders/OrderPage";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import {
+  ClipboardList,
+  DollarSign,
+  Users,
+  TrendingUp,
+  Activity,
+} from "lucide-react";
 
 const Dashboard = () => {
   const { logout } = useAuth();
@@ -17,107 +29,78 @@ const Dashboard = () => {
       case "overview":
         return (
           <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-gray-900">Overview</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {/* Stat Cards */}
-              <div className="bg-white rounded-lg shadow-md p-6 border border-amber-100">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">
-                      Total Orders
-                    </p>
-                    <p className="text-3xl font-bold text-gray-900 mt-2">
-                      1,234
-                    </p>
-                  </div>
-                  <div className="p-3 bg-amber-100 rounded-full">
-                    <svg
-                      className="h-8 w-8 text-amber-600"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
-                      />
-                    </svg>
-                  </div>
-                </div>
-                <p className="text-sm text-green-600 mt-4">
-                  ↑ 12% from last month
-                </p>
-              </div>
-
-              <div className="bg-white rounded-lg shadow-md p-6 border border-amber-100">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Revenue</p>
-                    <p className="text-3xl font-bold text-gray-900 mt-2">
-                      $45.2K
-                    </p>
-                  </div>
-                  <div className="p-3 bg-amber-100 rounded-full">
-                    <svg
-                      className="h-8 w-8 text-amber-600"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                      />
-                    </svg>
-                  </div>
-                </div>
-                <p className="text-sm text-green-600 mt-4">
-                  ↑ 8% from last month
-                </p>
-              </div>
-
-              <div className="bg-white rounded-lg shadow-md p-6 border border-amber-100">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">
-                      Active Users
-                    </p>
-                    <p className="text-3xl font-bold text-gray-900 mt-2">892</p>
-                  </div>
-                  <div className="p-3 bg-amber-100 rounded-full">
-                    <svg
-                      className="h-8 w-8 text-amber-600"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-                      />
-                    </svg>
-                  </div>
-                </div>
-                <p className="text-sm text-green-600 mt-4">
-                  ↑ 5% from last month
-                </p>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-lg shadow-md p-6 border border-amber-100">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                Recent Activity
-              </h3>
-              <p className="text-gray-600">
-                Activity data will be displayed here...
+            <div>
+              <h2 className="text-2xl font-bold tracking-tight">Overview</h2>
+              <p className="text-muted-foreground">
+                Welcome back! Here's what's happening.
               </p>
             </div>
+
+            {/* Stat Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    Total Orders
+                  </CardTitle>
+                  <ClipboardList className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold">1,234</div>
+                  <p className="text-xs text-emerald-600 flex items-center gap-1 mt-1">
+                    <TrendingUp className="h-3 w-3" />
+                    +12% from last month
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    Revenue
+                  </CardTitle>
+                  <DollarSign className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold">$45.2K</div>
+                  <p className="text-xs text-emerald-600 flex items-center gap-1 mt-1">
+                    <TrendingUp className="h-3 w-3" />
+                    +8% from last month
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    Active Users
+                  </CardTitle>
+                  <Users className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold">892</div>
+                  <p className="text-xs text-emerald-600 flex items-center gap-1 mt-1">
+                    <TrendingUp className="h-3 w-3" />
+                    +5% from last month
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Recent Activity */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Activity className="h-5 w-5" />
+                  Recent Activity
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground">
+                  Activity data will be displayed here...
+                </p>
+              </CardContent>
+            </Card>
           </div>
         );
 
@@ -127,42 +110,38 @@ const Dashboard = () => {
       case "settings":
         return (
           <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-gray-900">Settings</h2>
-            <div className="bg-white rounded-lg shadow-md p-6 border border-amber-100">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                General Settings
-              </h3>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Company Name
-                  </label>
-                  <input
-                    type="text"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                    placeholder="Enter company name"
-                  />
+            <div>
+              <h2 className="text-2xl font-bold tracking-tight">Settings</h2>
+              <p className="text-muted-foreground">
+                Manage your account settings and preferences.
+              </p>
+            </div>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">General Settings</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="company-name">Company Name</Label>
+                  <Input id="company-name" placeholder="Enter company name" />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Email Notifications
-                  </label>
-                  <label className="flex items-center">
+                <div className="space-y-2">
+                  <Label>Email Notifications</Label>
+                  <label className="flex items-center gap-2 cursor-pointer">
                     <input
                       type="checkbox"
-                      className="h-4 w-4 text-amber-600 focus:ring-amber-500 border-gray-300 rounded"
+                      className="h-4 w-4 rounded border-input text-primary focus:ring-primary"
                       defaultChecked
                     />
-                    <span className="ml-2 text-gray-600">
+                    <span className="text-sm text-muted-foreground">
                       Receive email notifications
                     </span>
                   </label>
                 </div>
-                <button className="px-6 py-2 bg-amber-500 text-white rounded-lg font-medium hover:bg-amber-600 transition-colors">
-                  Save Changes
-                </button>
-              </div>
-            </div>
+                <Button>Save Changes</Button>
+              </CardContent>
+            </Card>
           </div>
         );
 
@@ -172,7 +151,7 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-amber-50 to-yellow-100">
+    <div className="min-h-screen bg-background">
       <div className="flex">
         <Sidebar
           isOpen={isSidebarOpen}
@@ -184,9 +163,10 @@ const Dashboard = () => {
 
         {/* Main Content */}
         <main
-          className={`flex-1 p-8 transition-all duration-300 ${
-            isSidebarOpen ? "ml-64" : "ml-20"
-          }`}
+          className={cn(
+            "flex-1 p-6 transition-all duration-300",
+            isSidebarOpen ? "ml-64" : "ml-[68px]",
+          )}
         >
           {renderContent()}
         </main>
