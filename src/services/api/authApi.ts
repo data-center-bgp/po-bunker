@@ -1,4 +1,4 @@
-import { API_URL, getHeaders } from './config';
+import { API_URL, getHeaders } from "./config";
 
 interface LoginRequest {
   email: string;
@@ -16,24 +16,25 @@ export const authApi = {
     const requestBody = {
       login: credentials.email,
       password: credentials.password,
-      db: 'po-bunker',
+      db: "po-bunker",
     };
 
     const response = await fetch(`${API_URL}/api/login2`, {
-      method: 'POST',
+      method: "POST",
       headers: getHeaders(),
       body: JSON.stringify(requestBody),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      
+      let message = "Invalid email or password";
       try {
         const error = JSON.parse(errorText);
-        throw new Error(error.message || error.error || 'Invalid email or password');
-      } catch (e) {
-        throw new Error('Invalid email or password');
+        message = error.message || error.error || message;
+      } catch {
+        // JSON parse failed, use default message
       }
+      throw new Error(message);
     }
 
     return response.json();

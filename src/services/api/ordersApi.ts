@@ -160,10 +160,6 @@ export interface ProductsResponse {
   products: Product[];
 }
 
-export interface ProductsResponse {
-  products: Product[];
-}
-
 export interface CreateOrderRequest {
   company_id: number;
   partner_id: number;
@@ -187,7 +183,7 @@ export interface CreateOrderRequest {
 export const ordersApi = {
   getOrders: async (
     page: number = 1,
-    limit: number = 10
+    limit: number = 10,
   ): Promise<PurchaseOrdersResponse> => {
     const token = tokenManager.getToken();
 
@@ -200,7 +196,7 @@ export const ordersApi = {
       {
         method: "GET",
         headers: getAuthHeaders(token),
-      }
+      },
     );
 
     if (!response.ok) {
@@ -307,7 +303,7 @@ export const ordersApi = {
   },
 
   createOrder: async (
-    orderData: CreateOrderRequest
+    orderData: CreateOrderRequest,
   ): Promise<PurchaseOrder> => {
     const token = tokenManager.getToken();
 

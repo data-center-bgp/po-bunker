@@ -182,6 +182,23 @@ const OrderForm = ({ isOpen, onSuccess, onCancel }: OrderFormProps) => {
     setLoading(true);
     setError(null);
 
+    // Validate required fields
+    if (
+      !formData.companyId ||
+      !formData.partnerId ||
+      !formData.orderType ||
+      !formData.productId ||
+      !formData.dateOrder ||
+      !formData.vesselId ||
+      !formData.quantity ||
+      !formData.unitPrice ||
+      !formData.uomId
+    ) {
+      setError("Please fill in all required fields.");
+      setLoading(false);
+      return;
+    }
+
     try {
       const orderData = {
         company_id: parseInt(formData.companyId),
@@ -195,7 +212,8 @@ const OrderForm = ({ isOpen, onSuccess, onCancel }: OrderFormProps) => {
             product_id: parseInt(formData.productId),
             product_qty: parseFloat(formData.quantity),
             price_unit: parseFloat(formData.unitPrice),
-            total_price: parseFloat(formData.unitPrice),
+            total_price:
+              parseFloat(formData.quantity) * parseFloat(formData.unitPrice),
             vessel_id: parseInt(formData.vesselId),
             category_id: parseInt(formData.categoryId),
             code_budget_id: formData.codeBudgetId
