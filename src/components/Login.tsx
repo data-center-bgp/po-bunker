@@ -12,7 +12,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Anchor, AlertCircle, Eye, EyeOff, Loader2 } from "lucide-react";
+import { AlertCircle, Eye, EyeOff, Loader2 } from "lucide-react";
 
 interface LoginFormData {
   email: string;
@@ -98,8 +98,8 @@ const Login = () => {
       <div className="w-full max-w-md">
         <Card className="shadow-xl border-border/50">
           <CardHeader className="text-center space-y-3">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-primary/10">
-              <Anchor className="h-7 w-7 text-primary" />
+            <div className="mx-auto flex h-20 w-20 items-center justify-center">
+              <img src="/pt-barokah-gemilang-perkasa.png" alt="Company Logo" className="h-20 w-20 object-contain" />
             </div>
             <CardTitle className="text-2xl">Welcome Back</CardTitle>
             <CardDescription>
