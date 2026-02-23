@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/useAuth";
 import Sidebar, { type TabType } from "@/components/Sidebar";
 import OrdersPage from "@/components/orders/OrderPage";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";

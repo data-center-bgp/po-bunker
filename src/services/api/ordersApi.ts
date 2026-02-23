@@ -2,21 +2,90 @@ import { API_URL, getAuthHeaders } from "./config";
 import { tokenManager } from "./tokenManager";
 
 export interface OrderLine {
-  product_id: [number, string]; // [id, name]
+  id: number;
+  product_id: number;
+  product_name: string;
+  product_code: string | boolean;
+  name: string;
   product_qty: number;
+  product_uom: number;
+  product_uom_name: string;
   price_unit: number;
-  vessel_id: [number, string]; // [id, name]
+  price_subtotal: number;
+  price_total: number;
+  taxes_id: number[];
+  date_planned: string;
+  requested_by: number | null;
+  requested_by_name: string | null;
+  project_id: number | null;
+  project_name: string | null;
+  divisi_id: number | null;
+  divisi_name: string | null;
+  code_budget_id: number | null;
+  code_budget_name: string | null;
+  priority: boolean;
+  description: boolean;
+  remark: boolean;
+  status_list: boolean;
+  status_thing: boolean;
+  vessel_id: number;
+  vessel_name: string;
+  region_id: number | null;
+  region_name: string | null;
+  form_type: boolean;
 }
 
 export interface PurchaseOrder {
   id: number;
-  name: string; // PO number
-  partner_id: [number, string]; // [id, customer name]
+  name: string;
+  partner_id: number;
+  partner_name: string;
+  partner_ref: boolean;
   order_type: string;
+  state: string;
   date_order: string;
+  date_approve: string | null;
   date_planned: string;
-  state: string; // order status
-  order_line: OrderLine[];
+  date_create: string;
+  user_id: number;
+  user_name: string;
+  company_id: number;
+  company_name: string;
+  currency_id: number;
+  currency_name: string;
+  amount_untaxed: number;
+  amount_tax: number;
+  amount_discount: number;
+  amount_total: number;
+  notes: string;
+  payment_term_id: number | null;
+  payment_term_name: string | null;
+  fiscal_position_id: number | null;
+  picking_type_id: number;
+  picking_type_name: string;
+  is_ppn: boolean;
+  option_order: string;
+  is_order_from_stock: boolean;
+  first_approved_id: number | null;
+  first_approved_name: string | null;
+  first_approved_date: string | null;
+  first_approved_signature_url: string | null;
+  second_approved_id: number | null;
+  second_approved_name: string | null;
+  second_approved_date: string | null;
+  second_approved_signature_url: string | null;
+  third_approved_id: number | null;
+  third_approved_name: string | null;
+  third_approved_date: string | null;
+  third_approved_signature_url: string | null;
+  date_bunker: string | null;
+  date_vendor: string | null;
+  discount_ids: number[];
+  taxes_ids: number[];
+  create_date: string;
+  write_date: string;
+  order_lines: OrderLine[];
+  remarks: string[];
 }
 
 export interface PurchaseOrdersResponse {
@@ -180,6 +249,26 @@ export interface CreateOrderRequest {
   }[];
 }
 
+export interface UpdateOrderRequest {
+  company_id?: number;
+  partner_id?: number;
+  order_type?: string;
+  date_order?: string;
+  notes?: string;
+  picking_type_id?: number | null;
+  order_lines?: {
+    product_id: number;
+    product_qty: number;
+    price_unit: number;
+    total_price: number;
+    vessel_id: number;
+    category_id: number;
+    code_budget_id: number | null;
+    uom_id: number;
+    project: string;
+  }[];
+}
+
 export const ordersApi = {
   getOrders: async (
     page: number = 1,
@@ -323,6 +412,86 @@ export const ordersApi = {
       }
       const errorText = await response.text();
       throw new Error(errorText || "Failed to create order");
+    }
+
+    return response.json();
+  },
+
+  /**
+   * Generate Excel for a purchase order by id.
+   * Returns an ArrayBuffer of the XLSX file.
+   */
+  generateExcel: async (id: number): Promise<ArrayBuffer> => {
+    const token = tokenManager.getToken();
+
+    if (!token) {
+      throw new Error("No access token found");
+    }
+
+    const response = await fetch(
+      `${API_URL}/api/purchase-orders/${id}/generate-excel`,
+      {
+        method: "GET",
+        headers: getAuthHeaders(token),
+      },
+    );
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        throw new Error("Unauthorized. Please login again.");
+      }
+      const errorText = await response.text();
+      throw new Error(errorText || "Failed to generate excel");
+    }
+
+    return response.arrayBuffer();
+  },
+
+  updateOrder: async (
+    id: number,
+    orderData: UpdateOrderRequest,
+  ): Promise<PurchaseOrder> => {
+    const token = tokenManager.getToken();
+
+    if (!token) {
+      throw new Error("No access token found");
+    }
+
+    const response = await fetch(`${API_URL}/api/purchase-orders/${id}`, {
+      method: "PUT",
+      headers: getAuthHeaders(token),
+      body: JSON.stringify(orderData),
+    });
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        throw new Error("Unauthorized. Please login again.");
+      }
+      const errorText = await response.text();
+      throw new Error(errorText || "Failed to update order");
+    }
+
+    return response.json();
+  },
+
+  getOrderById: async (id: number): Promise<PurchaseOrder> => {
+    const token = tokenManager.getToken();
+
+    if (!token) {
+      throw new Error("No access token found");
+    }
+
+    const response = await fetch(`${API_URL}/api/purchase-orders/${id}`, {
+      method: "GET",
+      headers: getAuthHeaders(token),
+    });
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        throw new Error("Unauthorized. Please login again.");
+      }
+      const errorText = await response.text();
+      throw new Error(errorText || "Failed to fetch order");
     }
 
     return response.json();

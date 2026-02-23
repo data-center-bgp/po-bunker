@@ -18,6 +18,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import type { PurchaseOrder } from "@/services/api";
 import {
   Select,
   SelectContent,
@@ -49,6 +50,7 @@ interface OrderFormProps {
   isOpen: boolean;
   onSuccess: () => void;
   onCancel: () => void;
+  order?: PurchaseOrder | null;
 }
 
 const initialFormData: OrderFormData = {
@@ -67,7 +69,12 @@ const initialFormData: OrderFormData = {
   uomId: "",
 };
 
-const OrderForm = ({ isOpen, onSuccess, onCancel }: OrderFormProps) => {
+const OrderForm = ({
+  isOpen,
+  onSuccess,
+  onCancel,
+  order = null,
+}: OrderFormProps) => {
   const [formData, setFormData] = useState<OrderFormData>(initialFormData);
   const [vessels, setVessels] = useState<Vessel[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
@@ -89,6 +96,36 @@ const OrderForm = ({ isOpen, onSuccess, onCancel }: OrderFormProps) => {
       fetchProducts();
     }
   }, [isOpen]);
+
+  // populate when order or products change while form is open
+  useEffect(() => {
+    if (!isOpen || !order) return;
+    const firstLine = order.order_lines?.[0];
+    setFormData({
+      companyId: order.company_id?.toString?.() || "",
+      partnerId: order.partner_id?.toString?.() || "",
+      orderType: order.order_type || "",
+      productId: firstLine?.product_id?.toString?.() || "",
+      dateOrder: order.date_order
+        ? order.date_order.replace(" ", "T").slice(0, 16)
+        : "",
+      vesselId: firstLine?.vessel_id?.toString?.() || "",
+      quantity: firstLine?.product_qty?.toString?.() || "",
+      unitPrice: firstLine?.price_unit?.toString?.() || "",
+      project: firstLine?.project_name || "",
+      notes: order.notes || "",
+      categoryId: firstLine?.divisi_id?.toString?.() || "",
+      codeBudgetId: firstLine?.code_budget_id
+        ? firstLine.code_budget_id.toString()
+        : "",
+      uomId: firstLine?.product_uom?.toString?.() || "",
+    });
+
+    if (firstLine && products.length > 0) {
+      const prod = products.find((p) => p.id === firstLine?.product_id);
+      if (prod) setSelectedProduct(prod);
+    }
+  }, [isOpen, order, products]);
 
   const fetchVessels = async () => {
     try {
@@ -224,10 +261,13 @@ const OrderForm = ({ isOpen, onSuccess, onCancel }: OrderFormProps) => {
           },
         ],
       };
-
       console.log("Submitting order data:", JSON.stringify(orderData, null, 2));
 
-      await ordersApi.createOrder(orderData);
+      if (order && order.id) {
+        await ordersApi.updateOrder(order.id, orderData);
+      } else {
+        await ordersApi.createOrder(orderData);
+      }
       setFormData(initialFormData);
       setSelectedProduct(null);
       onSuccess();
@@ -246,16 +286,20 @@ const OrderForm = ({ isOpen, onSuccess, onCancel }: OrderFormProps) => {
     onCancel();
   };
 
+  const isEditing = !!order && !!order.id;
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleCancel()}>
       <DialogContent className="max-w-4xl max-h-[90vh] p-0">
         <DialogHeader className="px-6 pt-6">
           <DialogTitle className="flex items-center gap-2">
             <Package className="h-5 w-5" />
-            Create New Order
+            {isEditing ? "Edit Order" : "Create New Order"}
           </DialogTitle>
           <DialogDescription>
-            Fill in the details below to create a new purchase order.
+            {isEditing
+              ? "Update the details below to modify this purchase order."
+              : "Fill in the details below to create a new purchase order."}
           </DialogDescription>
         </DialogHeader>
 
@@ -573,8 +617,10 @@ const OrderForm = ({ isOpen, onSuccess, onCancel }: OrderFormProps) => {
             {loading ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Creating...
+                {isEditing ? "Updating..." : "Creating..."}
               </>
+            ) : isEditing ? (
+              "Update Order"
             ) : (
               "Create Order"
             )}

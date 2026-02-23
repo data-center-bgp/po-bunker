@@ -1,24 +1,24 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { ordersApi, type PurchaseOrder } from "@/services/api";
 import OrdersTable from "@/components/orders/OrdersTable";
 import OrderForm from "@/components/orders/OrderForm";
+import ViewOrderModal from "@/components/orders/ViewOrderModal";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, Plus } from "lucide-react";
 
 const OrdersPage = () => {
   const [showForm, setShowForm] = useState(false);
+  const [editingOrder, setEditingOrder] = useState<PurchaseOrder | null>(null);
   const [orders, setOrders] = useState<PurchaseOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [limit] = useState(10);
+  const [viewingOrderId, setViewingOrderId] = useState<number | null>(null);
+  const [viewModalOpen, setViewModalOpen] = useState(false);
 
-  useEffect(() => {
-    fetchOrders();
-  }, [currentPage]);
-
-  const fetchOrders = async () => {
+  const fetchOrders = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -34,11 +34,28 @@ const OrdersPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentPage, limit]);
+
+  useEffect(() => {
+    fetchOrders();
+  }, [fetchOrders]);
+
 
   const handleFormSuccess = () => {
     setShowForm(false);
+    setEditingOrder(null);
     fetchOrders();
+  };
+
+  const handleEdit = (orderId: number) => {
+    const ord = orders.find((o) => o.id === orderId) || null;
+    setEditingOrder(ord);
+    setShowForm(true);
+  };
+
+  const handleView = (orderId: number) => {
+    setViewingOrderId(orderId);
+    setViewModalOpen(true);
   };
 
   return (
@@ -73,13 +90,29 @@ const OrdersPage = () => {
         totalCount={totalCount}
         limit={limit}
         onPageChange={setCurrentPage}
+        onEdit={(order) => handleEdit(order.id)}
+        onView={handleView}
       />
 
       {/* Modal Form */}
       <OrderForm
         isOpen={showForm}
         onSuccess={handleFormSuccess}
-        onCancel={() => setShowForm(false)}
+        onCancel={() => {
+          setShowForm(false);
+          setEditingOrder(null);
+        }}
+        order={editingOrder}
+      />
+
+      {/* View Order Modal */}
+      <ViewOrderModal
+        orderId={viewingOrderId}
+        open={viewModalOpen}
+        onOpenChange={(open) => {
+          setViewModalOpen(open);
+          if (!open) setViewingOrderId(null);
+        }}
       />
     </div>
   );

@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { authApi } from "@/services/api";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,7 +25,13 @@ interface FormErrors {
 }
 
 const Login = () => {
-  const { login } = useAuth();
+  const auth = useAuth();
+  
+  if (!auth) {
+    return <div>Error: Auth context not available</div>;
+  }
+
+  const { login } = auth;
   const [formData, setFormData] = useState<LoginFormData>({
     email: "",
     password: "",

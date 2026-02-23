@@ -23,7 +23,10 @@ import {
   ChevronLeft,
   ChevronRight,
   Loader2,
+  Download,
 } from "lucide-react";
+import ExcelPreviewModal from "./ExcelPreviewModal";
+import { useState } from "react";
 
 interface OrdersTableProps {
   orders: PurchaseOrder[];
@@ -32,6 +35,8 @@ interface OrdersTableProps {
   totalCount: number;
   limit: number;
   onPageChange: (page: number) => void;
+  onEdit?: (order: PurchaseOrder) => void;
+  onView?: (orderId: number) => void;
 }
 
 const OrdersTable = ({
@@ -41,7 +46,16 @@ const OrdersTable = ({
   totalCount,
   limit,
   onPageChange,
+  onEdit,
+  onView,
 }: OrdersTableProps) => {
+  const [previewOrderId, setPreviewOrderId] = useState<number | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
+
+  const openPreview = (id: number) => {
+    setPreviewOrderId(id);
+    setPreviewOpen(true);
+  };
   const getStatusVariant = (
     state: string,
   ): "success" | "warning" | "info" | "destructive" | "secondary" => {
@@ -135,15 +149,15 @@ const OrdersTable = ({
                         },
                       )}
                     </TableCell>
-                    <TableCell>{order.partner_id?.[1] || "-"}</TableCell>
+                    <TableCell>{order.partner_name || "-"}</TableCell>
                     <TableCell>
-                      {order.order_line?.[0]?.vessel_id?.[1] || "-"}
+                      {order.order_lines?.[0]?.vessel_name || "-"}
                     </TableCell>
                     <TableCell>
-                      {order.order_line?.[0]?.product_id?.[1] || "-"}
+                      {order.order_lines?.[0]?.product_name || "-"}
                     </TableCell>
                     <TableCell className="text-right">
-                      {order.order_line?.[0]?.product_qty || "-"}
+                      {order.order_lines?.[0]?.product_qty || "-"}
                     </TableCell>
                     <TableCell>
                       <Badge variant={getStatusVariant(order.state)}>
@@ -158,23 +172,42 @@ const OrdersTable = ({
                               variant="ghost"
                               size="icon"
                               className="h-8 w-8"
+                              onClick={() => onView?.(order.id)}
                             >
                               <Eye className="h-4 w-4 text-muted-foreground" />
                             </Button>
                           </TooltipTrigger>
                           <TooltipContent>View</TooltipContent>
                         </Tooltip>
+                        {onEdit && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => onEdit(order)}
+                              >
+                                <Pencil className="h-4 w-4 text-muted-foreground" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Edit</TooltipContent>
+                          </Tooltip>
+                        )}
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <Button
                               variant="ghost"
                               size="icon"
                               className="h-8 w-8"
+                              onClick={() => openPreview(order.id)}
                             >
-                              <Pencil className="h-4 w-4 text-muted-foreground" />
+                              <Download className="h-4 w-4 text-muted-foreground" />
                             </Button>
                           </TooltipTrigger>
-                          <TooltipContent>Edit</TooltipContent>
+                          <TooltipContent>
+                            Preview / Download Excel
+                          </TooltipContent>
                         </Tooltip>
                         <Tooltip>
                           <TooltipTrigger asChild>
@@ -236,6 +269,14 @@ const OrdersTable = ({
             </Button>
           </div>
         </Card>
+        <ExcelPreviewModal
+          orderId={previewOrderId}
+          open={previewOpen}
+          onOpenChange={(open) => {
+            setPreviewOpen(open);
+            if (!open) setPreviewOrderId(null);
+          }}
+        />
       </div>
     </TooltipProvider>
   );
