@@ -474,6 +474,67 @@ export const ordersApi = {
     return response.json();
   },
 
+  deleteOrder: async (id: number): Promise<void> => {
+    const token = tokenManager.getToken();
+
+    if (!token) {
+      throw new Error("No access token found");
+    }
+
+    const response = await fetch(`${API_URL}/api/purchase-orders/${id}`, {
+      method: "DELETE",
+      headers: getAuthHeaders(token),
+    });
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        throw new Error("Unauthorized. Please login again.");
+      }
+      const errorText = await response.text();
+      try {
+        const errorJson = JSON.parse(errorText);
+        throw new Error(errorJson.error || "Failed to delete order");
+      } catch (e) {
+        if (e instanceof Error && e.message !== "Failed to delete order")
+          throw e;
+        throw new Error(errorText || "Failed to delete order");
+      }
+    }
+  },
+
+  cancelOrder: async (id: number): Promise<PurchaseOrder> => {
+    const token = tokenManager.getToken();
+
+    if (!token) {
+      throw new Error("No access token found");
+    }
+
+    const response = await fetch(
+      `${API_URL}/api/purchase-orders/${id}/cancel`,
+      {
+        method: "POST",
+        headers: getAuthHeaders(token),
+      },
+    );
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        throw new Error("Unauthorized. Please login again.");
+      }
+      const errorText = await response.text();
+      try {
+        const errorJson = JSON.parse(errorText);
+        throw new Error(errorJson.error || "Failed to cancel order");
+      } catch (e) {
+        if (e instanceof Error && e.message !== "Failed to cancel order")
+          throw e;
+        throw new Error(errorText || "Failed to cancel order");
+      }
+    }
+
+    return response.json();
+  },
+
   getOrderById: async (id: number): Promise<PurchaseOrder> => {
     const token = tokenManager.getToken();
 

@@ -40,7 +40,6 @@ const OrdersPage = () => {
     fetchOrders();
   }, [fetchOrders]);
 
-
   const handleFormSuccess = () => {
     setShowForm(false);
     setEditingOrder(null);
@@ -56,6 +55,17 @@ const OrdersPage = () => {
   const handleView = (orderId: number) => {
     setViewingOrderId(orderId);
     setViewModalOpen(true);
+  };
+
+  const handleDelete = async (
+    orderId: number,
+    cancelFirst: boolean = false,
+  ) => {
+    if (cancelFirst) {
+      await ordersApi.cancelOrder(orderId);
+    }
+    await ordersApi.deleteOrder(orderId);
+    fetchOrders();
   };
 
   return (
@@ -92,6 +102,7 @@ const OrdersPage = () => {
         onPageChange={setCurrentPage}
         onEdit={(order) => handleEdit(order.id)}
         onView={handleView}
+        onDelete={handleDelete}
       />
 
       {/* Modal Form */}

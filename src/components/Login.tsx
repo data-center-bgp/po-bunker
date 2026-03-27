@@ -25,13 +25,7 @@ interface FormErrors {
 }
 
 const Login = () => {
-  const auth = useAuth();
-  
-  if (!auth) {
-    return <div>Error: Auth context not available</div>;
-  }
-
-  const { login } = auth;
+  const { login } = useAuth();
   const [formData, setFormData] = useState<LoginFormData>({
     email: "",
     password: "",

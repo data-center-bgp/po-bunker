@@ -24,8 +24,17 @@ import {
   ChevronRight,
   Loader2,
   Download,
+  AlertCircle,
 } from "lucide-react";
 import ExcelPreviewModal from "./ExcelPreviewModal";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useState } from "react";
 
 interface OrdersTableProps {
@@ -37,6 +46,7 @@ interface OrdersTableProps {
   onPageChange: (page: number) => void;
   onEdit?: (order: PurchaseOrder) => void;
   onView?: (orderId: number) => void;
+  onDelete?: (orderId: number, cancelFirst?: boolean) => Promise<void>;
 }
 
 const OrdersTable = ({
@@ -48,13 +58,47 @@ const OrdersTable = ({
   onPageChange,
   onEdit,
   onView,
+  onDelete,
 }: OrdersTableProps) => {
   const [previewOrderId, setPreviewOrderId] = useState<number | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [deleteOrderId, setDeleteOrderId] = useState<number | null>(null);
+  const [deleteOrderName, setDeleteOrderName] = useState<string>("");
+  const [deleteOrderState, setDeleteOrderState] = useState<string>("");
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const openPreview = (id: number) => {
     setPreviewOrderId(id);
     setPreviewOpen(true);
+  };
+
+  const openDeleteConfirm = (id: number, name: string, state: string) => {
+    setDeleteOrderId(id);
+    setDeleteOrderName(name);
+    setDeleteOrderState(state);
+    setDeleteError(null);
+    setDeleteOpen(true);
+  };
+
+  const handleConfirmDelete = async (cancelFirst: boolean = false) => {
+    if (!deleteOrderId || !onDelete) return;
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await onDelete(deleteOrderId, cancelFirst);
+      setDeleteOpen(false);
+      setDeleteOrderId(null);
+      setDeleteOrderName("");
+      setDeleteOrderState("");
+    } catch (err) {
+      setDeleteError(
+        err instanceof Error ? err.message : "Failed to delete order",
+      );
+    } finally {
+      setDeleting(false);
+    }
   };
   const getStatusVariant = (
     state: string,
@@ -85,6 +129,23 @@ const OrdersTable = ({
     return statusMap[state] || state;
   };
 
+  const getOrderTypeLabel = (type: string) => {
+    const typeMap: Record<string, string> = {
+      bunker_fuel: "Bunker Fuel",
+      bunker_water: "Bunker Fresh Water",
+      logistic: "Logistic",
+    };
+    return typeMap[type] || type;
+  };
+
+  const formatCurrency = (amount: number, currency: string = "IDR") => {
+    return new Intl.NumberFormat("id-ID", {
+      style: "currency",
+      currency,
+      minimumFractionDigits: 0,
+    }).format(amount);
+  };
+
   const totalPages = Math.max(1, Math.ceil(totalCount / limit));
   const startItem = orders.length > 0 ? (currentPage - 1) * limit + 1 : 0;
   const endItem = Math.min(currentPage * limit, totalCount);
@@ -109,10 +170,9 @@ const OrdersTable = ({
                 <TableHead>PO Type</TableHead>
                 <TableHead>Order Date</TableHead>
                 <TableHead>Planned Date</TableHead>
+                <TableHead>Company</TableHead>
                 <TableHead>Customer</TableHead>
-                <TableHead>Vessel Name</TableHead>
-                <TableHead>Product</TableHead>
-                <TableHead className="text-right">Quantity</TableHead>
+                <TableHead className="text-right">Amount Total</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-center">Actions</TableHead>
               </TableRow>
@@ -121,7 +181,7 @@ const OrdersTable = ({
               {orders.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={10}
+                    colSpan={9}
                     className="h-24 text-center text-muted-foreground"
                   >
                     No orders found. Create your first order to get started.
@@ -131,7 +191,7 @@ const OrdersTable = ({
                 orders.map((order) => (
                   <TableRow key={order.id}>
                     <TableCell className="font-medium">{order.name}</TableCell>
-                    <TableCell>{order.order_type}</TableCell>
+                    <TableCell>{getOrderTypeLabel(order.order_type)}</TableCell>
                     <TableCell>
                       {new Date(order.date_order).toLocaleDateString("en-US", {
                         year: "numeric",
@@ -149,15 +209,15 @@ const OrdersTable = ({
                         },
                       )}
                     </TableCell>
+                    <TableCell>{order.company_name || "-"}</TableCell>
                     <TableCell>{order.partner_name || "-"}</TableCell>
-                    <TableCell>
-                      {order.order_lines?.[0]?.vessel_name || "-"}
-                    </TableCell>
-                    <TableCell>
-                      {order.order_lines?.[0]?.product_name || "-"}
-                    </TableCell>
                     <TableCell className="text-right">
-                      {order.order_lines?.[0]?.product_qty || "-"}
+                      {order.amount_total
+                        ? formatCurrency(
+                            order.amount_total,
+                            order.currency_name,
+                          )
+                        : "-"}
                     </TableCell>
                     <TableCell>
                       <Badge variant={getStatusVariant(order.state)}>
@@ -215,6 +275,13 @@ const OrdersTable = ({
                               variant="ghost"
                               size="icon"
                               className="h-8 w-8 text-destructive hover:text-destructive"
+                              onClick={() =>
+                                openDeleteConfirm(
+                                  order.id,
+                                  order.name,
+                                  order.state,
+                                )
+                              }
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -245,17 +312,40 @@ const OrdersTable = ({
               <ChevronLeft className="h-4 w-4" />
               Previous
             </Button>
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-              <Button
-                key={page}
-                variant={currentPage === page ? "default" : "outline"}
-                size="sm"
-                className="w-9"
-                onClick={() => onPageChange(page)}
-              >
-                {page}
-              </Button>
-            ))}
+            {(() => {
+              const pages: (number | string)[] = [];
+              if (totalPages <= 7) {
+                for (let i = 1; i <= totalPages; i++) pages.push(i);
+              } else {
+                pages.push(1);
+                if (currentPage > 3) pages.push("...");
+                const start = Math.max(2, currentPage - 1);
+                const end = Math.min(totalPages - 1, currentPage + 1);
+                for (let i = start; i <= end; i++) pages.push(i);
+                if (currentPage < totalPages - 2) pages.push("...");
+                pages.push(totalPages);
+              }
+              return pages.map((page, idx) =>
+                typeof page === "string" ? (
+                  <span
+                    key={`ellipsis-${idx}`}
+                    className="px-2 text-muted-foreground"
+                  >
+                    ...
+                  </span>
+                ) : (
+                  <Button
+                    key={page}
+                    variant={currentPage === page ? "default" : "outline"}
+                    size="sm"
+                    className="w-9"
+                    onClick={() => onPageChange(page)}
+                  >
+                    {page}
+                  </Button>
+                ),
+              );
+            })()}
             <Button
               variant="outline"
               size="sm"
@@ -269,6 +359,87 @@ const OrdersTable = ({
             </Button>
           </div>
         </Card>
+        {/* Delete Confirmation Dialog */}
+        <Dialog
+          open={deleteOpen}
+          onOpenChange={(open) => {
+            if (!deleting) {
+              setDeleteOpen(open);
+              if (!open) {
+                setDeleteOrderId(null);
+                setDeleteOrderName("");
+                setDeleteOrderState("");
+                setDeleteError(null);
+              }
+            }
+          }}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Delete Order</DialogTitle>
+              <DialogDescription>
+                {deleteOrderState !== "draft" ? (
+                  <>
+                    This order must be set to draft before it can be deleted.
+                    Would you like to cancel and delete{" "}
+                    <strong>{deleteOrderName}</strong>?
+                  </>
+                ) : (
+                  <>
+                    Are you sure you want to delete{" "}
+                    <strong>{deleteOrderName}</strong>? This action cannot be
+                    undone.
+                  </>
+                )}
+              </DialogDescription>
+            </DialogHeader>
+            {deleteError && (
+              <div className="flex items-center gap-2 rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
+                <AlertCircle className="h-4 w-4 shrink-0" />
+                {deleteError}
+              </div>
+            )}
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setDeleteOpen(false)}
+                disabled={deleting}
+              >
+                Cancel
+              </Button>
+              {deleteOrderState !== "draft" ? (
+                <Button
+                  variant="destructive"
+                  onClick={() => handleConfirmDelete(true)}
+                  disabled={deleting}
+                >
+                  {deleting ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" /> Processing...
+                    </>
+                  ) : (
+                    "Cancel & Delete"
+                  )}
+                </Button>
+              ) : (
+                <Button
+                  variant="destructive"
+                  onClick={() => handleConfirmDelete(false)}
+                  disabled={deleting}
+                >
+                  {deleting ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" /> Deleting...
+                    </>
+                  ) : (
+                    "Delete"
+                  )}
+                </Button>
+              )}
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
         <ExcelPreviewModal
           orderId={previewOrderId}
           open={previewOpen}

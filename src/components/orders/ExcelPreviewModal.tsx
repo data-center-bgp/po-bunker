@@ -26,6 +26,7 @@ const ExcelPreviewModal: React.FC<Props> = ({
   const [loading, setLoading] = useState(false);
   const [htmlPreview, setHtmlPreview] = useState<string | null>(null);
   const [fileBuffer, setFileBuffer] = useState<ArrayBuffer | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open || !orderId) return;
@@ -36,6 +37,7 @@ const ExcelPreviewModal: React.FC<Props> = ({
       setLoading(true);
       setHtmlPreview(null);
       setFileBuffer(null);
+      setErrorMessage(null);
       try {
         const buffer = await ordersApi.generateExcel(orderId);
         if (cancelled) return;
@@ -52,9 +54,8 @@ const ExcelPreviewModal: React.FC<Props> = ({
           setHtmlPreview("<p>Preview not available for this file.</p>");
         }
       } catch (err) {
-        setHtmlPreview(
-          `<p class="text-destructive">Error: ${err instanceof Error ? err.message : String(err)}</p>`,
-        );
+        setHtmlPreview(null);
+        setErrorMessage(err instanceof Error ? err.message : String(err));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -97,6 +98,8 @@ const ExcelPreviewModal: React.FC<Props> = ({
             <div className="flex items-center justify-center p-8">
               <Loader2 className="h-6 w-6 animate-spin text-primary" />
             </div>
+          ) : errorMessage ? (
+            <p className="text-sm text-destructive">Error: {errorMessage}</p>
           ) : htmlPreview ? (
             <div dangerouslySetInnerHTML={{ __html: htmlPreview }} />
           ) : (

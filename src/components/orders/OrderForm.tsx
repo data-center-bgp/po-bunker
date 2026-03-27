@@ -272,8 +272,17 @@ const OrderForm = ({
       setSelectedProduct(null);
       onSuccess();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create order");
-      console.error("Error creating order:", err);
+      setError(
+        err instanceof Error
+          ? err.message
+          : order
+            ? "Failed to update order"
+            : "Failed to create order",
+      );
+      console.error(
+        order ? "Error updating order:" : "Error creating order:",
+        err,
+      );
     } finally {
       setLoading(false);
     }

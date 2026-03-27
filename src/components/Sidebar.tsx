@@ -16,7 +16,6 @@ import {
   LogOut,
   ChevronsLeft,
   ChevronsRight,
-  Anchor,
 } from "lucide-react";
 
 export type TabType = "overview" | "orders" | "settings";
@@ -106,7 +105,11 @@ const Sidebar = ({
         <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-4">
           {isOpen && (
             <div className="flex items-center gap-2">
-              <Anchor className="h-6 w-6 text-primary" />
+              <img
+                src="/pt-barokah-gemilang-perkasa.png"
+                alt="Logo"
+                className="h-6 w-6 object-contain"
+              />
               <h1 className="text-lg font-bold text-foreground">PO Bunker</h1>
             </div>
           )}
