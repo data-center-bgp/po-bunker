@@ -85,7 +85,12 @@ const OrdersPage = () => {
   };
 
   const handleCancel = async (orderId: number) => {
-    await ordersApi.cancelOrder(orderId);
+    try {
+      await ordersApi.cancelOrder(orderId);
+      fetchOrders();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to cancel order");
+    }
   };
 
   const handleDeleteSingle = async (orderId: number) => {
@@ -135,6 +140,7 @@ const OrdersPage = () => {
         currentPage={currentPage}
         totalCount={totalCount}
         onConfirm={handleConfirm}
+        onCancel={handleCancel}
         onSetDraft={handleSetDraft}
         limit={limit}
         onPageChange={setCurrentPage}

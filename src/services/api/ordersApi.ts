@@ -235,7 +235,7 @@ export interface CreateOrderRequest {
   order_type: string;
   date_order: string;
   notes: string;
-  picking_type_id: number | null;
+  picking_type_id?: number | null;
   order_lines: {
     product_id: number;
     product_qty: number;

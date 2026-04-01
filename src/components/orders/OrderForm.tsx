@@ -262,7 +262,6 @@ const OrderForm = ({
         order_type: formData.orderType,
         date_order: formData.dateOrder.replace("T", " ") + ":00",
         notes: formData.notes,
-        picking_type_id: 1,
         order_lines: [orderLine],
       };
       console.log("Submitting order data:", JSON.stringify(orderData, null, 2));

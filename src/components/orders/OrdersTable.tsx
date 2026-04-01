@@ -26,6 +26,7 @@ import {
   Download,
   AlertCircle,
   CheckCircle,
+  XCircle,
   FileText,
 } from "lucide-react";
 import ExcelPreviewModal from "./ExcelPreviewModal";
@@ -50,6 +51,7 @@ interface OrdersTableProps {
   onView?: (orderId: number) => void;
   onDelete?: (orderId: number, cancelFirst?: boolean) => Promise<void>;
   onConfirm?: (orderId: number) => Promise<void>;
+  onCancel?: (orderId: number) => Promise<void>;
   onSetDraft?: (orderId: number) => Promise<void>;
 }
 
@@ -64,6 +66,7 @@ const OrdersTable = ({
   onView,
   onDelete,
   onConfirm,
+  onCancel,
   onSetDraft,
 }: OrdersTableProps) => {
   const [previewOrderId, setPreviewOrderId] = useState<number | null>(null);
@@ -75,6 +78,7 @@ const OrdersTable = ({
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [confirmingId, setConfirmingId] = useState<number | null>(null);
+  const [cancellingId, setCancellingId] = useState<number | null>(null);
   const [draftingId, setDraftingId] = useState<number | null>(null);
 
   const openPreview = (id: number) => {
@@ -158,6 +162,26 @@ const OrdersTable = ({
   const startItem = orders.length > 0 ? (currentPage - 1) * limit + 1 : 0;
   const endItem = Math.min(currentPage * limit, totalCount);
 
+  const [stateFilter, setStateFilter] = useState<
+    "all" | "draft" | "purchase" | "cancel"
+  >("all");
+
+  const filteredOrders = orders.filter((o) => {
+    if (stateFilter === "all") return true;
+    if (stateFilter === "purchase")
+      return (
+        o.state === "purchase" || o.state === "to approve" || o.state === "done"
+      );
+    return o.state === stateFilter;
+  });
+
+  const draftCount = orders.filter((o) => o.state === "draft").length;
+  const purchaseCount = orders.filter(
+    (o) =>
+      o.state === "purchase" || o.state === "to approve" || o.state === "done",
+  ).length;
+  const cancelCount = orders.filter((o) => o.state === "cancel").length;
+
   if (loading) {
     return (
       <Card className="flex items-center justify-center p-12">
@@ -166,9 +190,232 @@ const OrdersTable = ({
     );
   }
 
+  const renderOrderRow = (order: PurchaseOrder) => (
+    <TableRow key={order.id}>
+      <TableCell className="font-medium">{order.name}</TableCell>
+      <TableCell>{getOrderTypeLabel(order.order_type)}</TableCell>
+      <TableCell>
+        {new Date(order.date_order).toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "short",
+          day: "numeric",
+        })}
+      </TableCell>
+      <TableCell>
+        {new Date(order.date_planned).toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "short",
+          day: "numeric",
+        })}
+      </TableCell>
+      <TableCell>{order.company_name || "-"}</TableCell>
+      <TableCell>{order.partner_name || "-"}</TableCell>
+      <TableCell className="text-right">
+        {order.amount_total
+          ? formatCurrency(order.amount_total, order.currency_name)
+          : "-"}
+      </TableCell>
+      <TableCell>
+        <Badge variant={getStatusVariant(order.state)}>
+          {getStatusLabel(order.state)}
+        </Badge>
+      </TableCell>
+      <TableCell>
+        <div className="flex items-center justify-center gap-1">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => onView?.(order.id)}
+              >
+                <Eye className="h-4 w-4 text-muted-foreground" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>View</TooltipContent>
+          </Tooltip>
+          {onEdit && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => onEdit(order)}
+                >
+                  <Pencil className="h-4 w-4 text-muted-foreground" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Edit</TooltipContent>
+            </Tooltip>
+          )}
+          {onConfirm && order.state === "draft" && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-green-600 hover:text-green-700"
+                  disabled={confirmingId === order.id}
+                  onClick={async () => {
+                    setConfirmingId(order.id);
+                    try {
+                      await onConfirm(order.id);
+                    } finally {
+                      setConfirmingId(null);
+                    }
+                  }}
+                >
+                  {confirmingId === order.id ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <CheckCircle className="h-4 w-4" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Confirm Order</TooltipContent>
+            </Tooltip>
+          )}
+          {onCancel && order.state !== "cancel" && order.state !== "draft" && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-orange-600 hover:text-orange-700"
+                  disabled={cancellingId === order.id}
+                  onClick={async () => {
+                    setCancellingId(order.id);
+                    try {
+                      await onCancel(order.id);
+                    } finally {
+                      setCancellingId(null);
+                    }
+                  }}
+                >
+                  {cancellingId === order.id ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <XCircle className="h-4 w-4" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Cancel PO</TooltipContent>
+            </Tooltip>
+          )}
+          {onSetDraft && order.state === "cancel" && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-blue-600 hover:text-blue-700"
+                  disabled={draftingId === order.id}
+                  onClick={async () => {
+                    setDraftingId(order.id);
+                    try {
+                      await onSetDraft(order.id);
+                    } finally {
+                      setDraftingId(null);
+                    }
+                  }}
+                >
+                  {draftingId === order.id ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <FileText className="h-4 w-4" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Set to Draft</TooltipContent>
+            </Tooltip>
+          )}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => openPreview(order.id)}
+              >
+                <Download className="h-4 w-4 text-muted-foreground" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Preview / Download Excel</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-destructive hover:text-destructive"
+                onClick={() =>
+                  openDeleteConfirm(order.id, order.name, order.state)
+                }
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Delete</TooltipContent>
+          </Tooltip>
+        </div>
+      </TableCell>
+    </TableRow>
+  );
+
+  const filterButtons: {
+    key: typeof stateFilter;
+    label: string;
+    count: number;
+    variant: "outline" | "default";
+  }[] = [
+    {
+      key: "all",
+      label: "All",
+      count: orders.length,
+      variant: stateFilter === "all" ? "default" : "outline",
+    },
+    {
+      key: "draft",
+      label: "Draft",
+      count: draftCount,
+      variant: stateFilter === "draft" ? "default" : "outline",
+    },
+    {
+      key: "purchase",
+      label: "Confirmed",
+      count: purchaseCount,
+      variant: stateFilter === "purchase" ? "default" : "outline",
+    },
+    {
+      key: "cancel",
+      label: "Cancelled",
+      count: cancelCount,
+      variant: stateFilter === "cancel" ? "default" : "outline",
+    },
+  ];
+
   return (
     <TooltipProvider>
       <div className="space-y-4">
+        {/* Filter Buttons */}
+        <div className="flex items-center gap-2">
+          {filterButtons.map((fb) => (
+            <Button
+              key={fb.key}
+              variant={fb.variant}
+              size="sm"
+              onClick={() => setStateFilter(fb.key)}
+            >
+              {fb.label}
+              <Badge variant="secondary" className="ml-1.5 px-1.5 py-0 text-xs">
+                {fb.count}
+              </Badge>
+            </Button>
+          ))}
+        </div>
+
         {/* Table */}
         <Card className="overflow-hidden">
           <Table>
@@ -186,174 +433,19 @@ const OrdersTable = ({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {orders.length === 0 ? (
+              {filteredOrders.length === 0 ? (
                 <TableRow>
                   <TableCell
                     colSpan={9}
                     className="h-24 text-center text-muted-foreground"
                   >
-                    No orders found. Create your first order to get started.
+                    {orders.length === 0
+                      ? "No orders found. Create your first order to get started."
+                      : "No orders match the selected filter."}
                   </TableCell>
                 </TableRow>
               ) : (
-                orders.map((order) => (
-                  <TableRow key={order.id}>
-                    <TableCell className="font-medium">{order.name}</TableCell>
-                    <TableCell>{getOrderTypeLabel(order.order_type)}</TableCell>
-                    <TableCell>
-                      {new Date(order.date_order).toLocaleDateString("en-US", {
-                        year: "numeric",
-                        month: "short",
-                        day: "numeric",
-                      })}
-                    </TableCell>
-                    <TableCell>
-                      {new Date(order.date_planned).toLocaleDateString(
-                        "en-US",
-                        {
-                          year: "numeric",
-                          month: "short",
-                          day: "numeric",
-                        },
-                      )}
-                    </TableCell>
-                    <TableCell>{order.company_name || "-"}</TableCell>
-                    <TableCell>{order.partner_name || "-"}</TableCell>
-                    <TableCell className="text-right">
-                      {order.amount_total
-                        ? formatCurrency(
-                            order.amount_total,
-                            order.currency_name,
-                          )
-                        : "-"}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={getStatusVariant(order.state)}>
-                        {getStatusLabel(order.state)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center justify-center gap-1">
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8"
-                              onClick={() => onView?.(order.id)}
-                            >
-                              <Eye className="h-4 w-4 text-muted-foreground" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>View</TooltipContent>
-                        </Tooltip>
-                        {onEdit && (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8"
-                                onClick={() => onEdit(order)}
-                              >
-                                <Pencil className="h-4 w-4 text-muted-foreground" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>Edit</TooltipContent>
-                          </Tooltip>
-                        )}
-                        {onConfirm && order.state === "draft" && (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-green-600 hover:text-green-700"
-                                disabled={confirmingId === order.id}
-                                onClick={async () => {
-                                  setConfirmingId(order.id);
-                                  try {
-                                    await onConfirm(order.id);
-                                  } finally {
-                                    setConfirmingId(null);
-                                  }
-                                }}
-                              >
-                                {confirmingId === order.id ? (
-                                  <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : (
-                                  <CheckCircle className="h-4 w-4" />
-                                )}
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>Confirm Order</TooltipContent>
-                          </Tooltip>
-                        )}
-                        {onSetDraft && order.state === "cancel" && (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-blue-600 hover:text-blue-700"
-                                disabled={draftingId === order.id}
-                                onClick={async () => {
-                                  setDraftingId(order.id);
-                                  try {
-                                    await onSetDraft(order.id);
-                                  } finally {
-                                    setDraftingId(null);
-                                  }
-                                }}
-                              >
-                                {draftingId === order.id ? (
-                                  <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : (
-                                  <FileText className="h-4 w-4" />
-                                )}
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>Set to Draft</TooltipContent>
-                          </Tooltip>
-                        )}
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8"
-                              onClick={() => openPreview(order.id)}
-                            >
-                              <Download className="h-4 w-4 text-muted-foreground" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            Preview / Download Excel
-                          </TooltipContent>
-                        </Tooltip>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-destructive hover:text-destructive"
-                              onClick={() =>
-                                openDeleteConfirm(
-                                  order.id,
-                                  order.name,
-                                  order.state,
-                                )
-                              }
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>Delete</TooltipContent>
-                        </Tooltip>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
+                filteredOrders.map(renderOrderRow)
               )}
             </TableBody>
           </Table>
