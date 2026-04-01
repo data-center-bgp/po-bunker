@@ -9,7 +9,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import ReactQuill from "react-quill-new";
+import "react-quill-new/dist/quill.snow.css";
 import {
   Dialog,
   DialogContent,
@@ -237,6 +238,24 @@ const OrderForm = ({
     }
 
     try {
+      const orderLine = {
+        ...(isEditing && order?.order_lines?.[0]?.id
+          ? { id: order.order_lines[0].id }
+          : {}),
+        product_id: parseInt(formData.productId),
+        product_qty: parseFloat(formData.quantity),
+        price_unit: parseFloat(formData.unitPrice),
+        total_price:
+          parseFloat(formData.quantity) * parseFloat(formData.unitPrice),
+        vessel_id: parseInt(formData.vesselId),
+        category_id: parseInt(formData.categoryId),
+        code_budget_id: formData.codeBudgetId
+          ? parseInt(formData.codeBudgetId)
+          : null,
+        uom_id: parseInt(formData.uomId),
+        project: formData.project,
+      };
+
       const orderData = {
         company_id: parseInt(formData.companyId),
         partner_id: parseInt(formData.partnerId),
@@ -244,22 +263,7 @@ const OrderForm = ({
         date_order: formData.dateOrder.replace("T", " ") + ":00",
         notes: formData.notes,
         picking_type_id: 1,
-        order_lines: [
-          {
-            product_id: parseInt(formData.productId),
-            product_qty: parseFloat(formData.quantity),
-            price_unit: parseFloat(formData.unitPrice),
-            total_price:
-              parseFloat(formData.quantity) * parseFloat(formData.unitPrice),
-            vessel_id: parseInt(formData.vesselId),
-            category_id: parseInt(formData.categoryId),
-            code_budget_id: formData.codeBudgetId
-              ? parseInt(formData.codeBudgetId)
-              : null,
-            uom_id: parseInt(formData.uomId),
-            project: formData.project,
-          },
-        ],
+        order_lines: [orderLine],
       };
       console.log("Submitting order data:", JSON.stringify(orderData, null, 2));
 
@@ -595,17 +599,24 @@ const OrderForm = ({
                 <Label htmlFor="notes">
                   Notes <span className="text-destructive">*</span>
                 </Label>
-                <Textarea
-                  id="notes"
-                  name="notes"
-                  value={formData.notes}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, notes: e.target.value }))
-                  }
-                  rows={4}
-                  placeholder="Enter order notes"
-                  required
-                />
+                <div className="[&_.ql-toolbar]:rounded-t-md [&_.ql-container]:rounded-b-md [&_.ql-toolbar]:border-border [&_.ql-container]:border-border [&_.ql-editor]:min-h-[100px]">
+                  <ReactQuill
+                    theme="snow"
+                    value={formData.notes}
+                    onChange={(value) =>
+                      setFormData((prev) => ({ ...prev, notes: value }))
+                    }
+                    placeholder="Enter order notes"
+                    modules={{
+                      toolbar: [
+                        [{ header: [1, 2, 3, false] }],
+                        ["bold", "italic", "underline", "strike"],
+                        [{ list: "ordered" }, { list: "bullet" }],
+                        ["clean"],
+                      ],
+                    }}
+                  />
+                </div>
               </div>
             </form>
           </div>

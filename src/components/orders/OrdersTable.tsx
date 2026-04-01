@@ -25,6 +25,8 @@ import {
   Loader2,
   Download,
   AlertCircle,
+  CheckCircle,
+  FileText,
 } from "lucide-react";
 import ExcelPreviewModal from "./ExcelPreviewModal";
 import {
@@ -47,6 +49,8 @@ interface OrdersTableProps {
   onEdit?: (order: PurchaseOrder) => void;
   onView?: (orderId: number) => void;
   onDelete?: (orderId: number, cancelFirst?: boolean) => Promise<void>;
+  onConfirm?: (orderId: number) => Promise<void>;
+  onSetDraft?: (orderId: number) => Promise<void>;
 }
 
 const OrdersTable = ({
@@ -59,6 +63,8 @@ const OrdersTable = ({
   onEdit,
   onView,
   onDelete,
+  onConfirm,
+  onSetDraft,
 }: OrdersTableProps) => {
   const [previewOrderId, setPreviewOrderId] = useState<number | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -68,6 +74,8 @@ const OrdersTable = ({
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [confirmingId, setConfirmingId] = useState<number | null>(null);
+  const [draftingId, setDraftingId] = useState<number | null>(null);
 
   const openPreview = (id: number) => {
     setPreviewOrderId(id);
@@ -252,6 +260,60 @@ const OrdersTable = ({
                               </Button>
                             </TooltipTrigger>
                             <TooltipContent>Edit</TooltipContent>
+                          </Tooltip>
+                        )}
+                        {onConfirm && order.state === "draft" && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-green-600 hover:text-green-700"
+                                disabled={confirmingId === order.id}
+                                onClick={async () => {
+                                  setConfirmingId(order.id);
+                                  try {
+                                    await onConfirm(order.id);
+                                  } finally {
+                                    setConfirmingId(null);
+                                  }
+                                }}
+                              >
+                                {confirmingId === order.id ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <CheckCircle className="h-4 w-4" />
+                                )}
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Confirm Order</TooltipContent>
+                          </Tooltip>
+                        )}
+                        {onSetDraft && order.state === "cancel" && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-blue-600 hover:text-blue-700"
+                                disabled={draftingId === order.id}
+                                onClick={async () => {
+                                  setDraftingId(order.id);
+                                  try {
+                                    await onSetDraft(order.id);
+                                  } finally {
+                                    setDraftingId(null);
+                                  }
+                                }}
+                              >
+                                {draftingId === order.id ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <FileText className="h-4 w-4" />
+                                )}
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Set to Draft</TooltipContent>
                           </Tooltip>
                         )}
                         <Tooltip>

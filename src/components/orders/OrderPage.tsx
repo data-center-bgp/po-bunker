@@ -46,10 +46,17 @@ const OrdersPage = () => {
     fetchOrders();
   };
 
-  const handleEdit = (orderId: number) => {
-    const ord = orders.find((o) => o.id === orderId) || null;
-    setEditingOrder(ord);
-    setShowForm(true);
+  const handleEdit = async (orderId: number) => {
+    try {
+      // Fetch full order with order_lines (list endpoint doesn't include them)
+      const fullOrder = await ordersApi.getOrderById(orderId);
+      setEditingOrder(fullOrder);
+      setShowForm(true);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to load order for editing",
+      );
+    }
   };
 
   const handleView = (orderId: number) => {
@@ -66,6 +73,35 @@ const OrdersPage = () => {
     }
     await ordersApi.deleteOrder(orderId);
     fetchOrders();
+  };
+
+  const handleConfirm = async (orderId: number) => {
+    try {
+      await ordersApi.confirmOrder(orderId);
+      fetchOrders();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to confirm order");
+    }
+  };
+
+  const handleCancel = async (orderId: number) => {
+    await ordersApi.cancelOrder(orderId);
+  };
+
+  const handleDeleteSingle = async (orderId: number) => {
+    await ordersApi.deleteOrder(orderId);
+    fetchOrders();
+  };
+
+  const handleSetDraft = async (orderId: number) => {
+    try {
+      await ordersApi.draftOrder(orderId);
+      fetchOrders();
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to set order to draft",
+      );
+    }
   };
 
   return (
@@ -98,6 +134,8 @@ const OrdersPage = () => {
         loading={loading}
         currentPage={currentPage}
         totalCount={totalCount}
+        onConfirm={handleConfirm}
+        onSetDraft={handleSetDraft}
         limit={limit}
         onPageChange={setCurrentPage}
         onEdit={(order) => handleEdit(order.id)}
@@ -124,6 +162,11 @@ const OrdersPage = () => {
           setViewModalOpen(open);
           if (!open) setViewingOrderId(null);
         }}
+        onConfirm={handleConfirm}
+        onCancel={handleCancel}
+        onDelete={handleDeleteSingle}
+        onSetDraft={handleSetDraft}
+        onRefreshList={fetchOrders}
       />
     </div>
   );

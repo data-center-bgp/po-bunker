@@ -257,6 +257,7 @@ export interface UpdateOrderRequest {
   notes?: string;
   picking_type_id?: number | null;
   order_lines?: {
+    id?: number;
     product_id: number;
     product_qty: number;
     price_unit: number;
@@ -553,6 +554,72 @@ export const ordersApi = {
       }
       const errorText = await response.text();
       throw new Error(errorText || "Failed to fetch order");
+    }
+
+    return response.json();
+  },
+
+  confirmOrder: async (id: number): Promise<PurchaseOrder> => {
+    const token = tokenManager.getToken();
+
+    if (!token) {
+      throw new Error("No access token found");
+    }
+
+    const response = await fetch(
+      `${API_URL}/api/purchase-orders/${id}/confirm`,
+      {
+        method: "POST",
+        headers: getAuthHeaders(token),
+      },
+    );
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        throw new Error("Unauthorized. Please login again.");
+      }
+      const errorText = await response.text();
+      try {
+        const errorJson = JSON.parse(errorText);
+        throw new Error(errorJson.error || "Failed to confirm order");
+      } catch (e) {
+        if (e instanceof Error && e.message !== "Failed to confirm order")
+          throw e;
+        throw new Error(errorText || "Failed to confirm order");
+      }
+    }
+
+    return response.json();
+  },
+
+  draftOrder: async (id: number): Promise<PurchaseOrder> => {
+    const token = tokenManager.getToken();
+
+    if (!token) {
+      throw new Error("No access token found");
+    }
+
+    const response = await fetch(
+      `${API_URL}/api/purchase-orders/${id}/set-to-draft`,
+      {
+        method: "POST",
+        headers: getAuthHeaders(token),
+      },
+    );
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        throw new Error("Unauthorized. Please login again.");
+      }
+      const errorText = await response.text();
+      try {
+        const errorJson = JSON.parse(errorText);
+        throw new Error(errorJson.error || "Failed to set order to draft");
+      } catch (e) {
+        if (e instanceof Error && e.message !== "Failed to set order to draft")
+          throw e;
+        throw new Error(errorText || "Failed to set order to draft");
+      }
     }
 
     return response.json();

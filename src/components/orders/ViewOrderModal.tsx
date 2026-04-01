@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import DOMPurify from "dompurify";
 import { ordersApi, type PurchaseOrder } from "@/services/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,22 +32,44 @@ import {
   Calendar,
   FileText,
   Hash,
+  CheckCircle,
+  XCircle,
+  Trash2,
+  AlertCircle,
 } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface ViewOrderModalProps {
   orderId: number | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onConfirm?: (orderId: number) => Promise<void>;
+  onCancel?: (orderId: number) => Promise<void>;
+  onDelete?: (orderId: number) => Promise<void>;
+  onSetDraft?: (orderId: number) => Promise<void>;
+  onRefreshList?: () => void;
 }
 
 const ViewOrderModal = ({
   orderId,
   open,
   onOpenChange,
+  onConfirm,
+  onCancel,
+  onDelete,
+  onSetDraft,
+  onRefreshList,
 }: ViewOrderModalProps) => {
   const [order, setOrder] = useState<PurchaseOrder | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   useEffect(() => {
     if (open && orderId) {
@@ -54,6 +77,7 @@ const ViewOrderModal = ({
     } else if (!open) {
       setOrder(null);
       setError(null);
+      setActionError(null);
     }
   }, [open, orderId]);
 
@@ -102,6 +126,32 @@ const ViewOrderModal = ({
     return statusMap[state] || state;
   };
 
+  const handleAction = async (
+    action: "confirm" | "cancel" | "delete" | "draft",
+    handler?: (id: number) => Promise<void>,
+  ) => {
+    if (!handler || !order) return;
+    setActionLoading(action);
+    setActionError(null);
+    try {
+      await handler(order.id);
+      if (action === "delete") {
+        onRefreshList?.();
+        onOpenChange(false);
+      } else {
+        // Re-fetch order to reflect new state
+        await fetchOrder(order.id);
+        onRefreshList?.();
+      }
+    } catch (err) {
+      setActionError(
+        err instanceof Error ? err.message : `Failed to ${action} order`,
+      );
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   const formatDate = (dateString: string) => {
     if (!dateString) return "-";
     return new Date(dateString).toLocaleDateString("en-US", {
@@ -146,8 +196,15 @@ const ViewOrderModal = ({
 
         {error && (
           <div className="mx-6 my-4 flex items-center gap-2 rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
-            <Loader2 className="h-4 w-4" />
+            <AlertCircle className="h-4 w-4" />
             {error}
+          </div>
+        )}
+
+        {actionError && (
+          <div className="mx-6 my-4 flex items-center gap-2 rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
+            <AlertCircle className="h-4 w-4" />
+            {actionError}
           </div>
         )}
 
@@ -293,6 +350,25 @@ const ViewOrderModal = ({
                   </Table>
                 </div>
               </div>
+
+              {/* Notes */}
+              {order.notes && (
+                <>
+                  <Separator />
+                  <div>
+                    <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                      <FileText className="h-4 w-4" />
+                      Notes
+                    </h4>
+                    <div
+                      className="prose prose-sm max-w-none rounded-md border border-border bg-muted p-3 [&>p]:my-1"
+                      dangerouslySetInnerHTML={{
+                        __html: DOMPurify.sanitize(order.notes),
+                      }}
+                    />
+                  </div>
+                </>
+              )}
             </div>
           </ScrollArea>
         )}
@@ -300,9 +376,85 @@ const ViewOrderModal = ({
         <Separator />
 
         <DialogFooter className="px-6 pb-6">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Close
-          </Button>
+          <div className="flex w-full items-center justify-between">
+            <TooltipProvider>
+              <div className="flex items-center gap-2">
+                {onConfirm && order && order.state === "draft" && (
+                  <Button
+                    variant="default"
+                    className="bg-green-600 hover:bg-green-700"
+                    disabled={!!actionLoading}
+                    onClick={() => handleAction("confirm", onConfirm)}
+                  >
+                    {actionLoading === "confirm" ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <CheckCircle className="h-4 w-4" />
+                    )}
+                    Confirm
+                  </Button>
+                )}
+                {onSetDraft && order && order.state === "cancel" && (
+                  <Button
+                    variant="outline"
+                    className="border-blue-500 text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+                    disabled={!!actionLoading}
+                    onClick={() => handleAction("draft", onSetDraft)}
+                  >
+                    {actionLoading === "draft" ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <FileText className="h-4 w-4" />
+                    )}
+                    Set to Draft
+                  </Button>
+                )}
+                {onCancel && order && order.state !== "cancel" && (
+                  <Button
+                    variant="outline"
+                    className="border-orange-500 text-orange-600 hover:bg-orange-50 hover:text-orange-700"
+                    disabled={!!actionLoading}
+                    onClick={() => handleAction("cancel", onCancel)}
+                  >
+                    {actionLoading === "cancel" ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <XCircle className="h-4 w-4" />
+                    )}
+                    Cancel PO
+                  </Button>
+                )}
+                {onDelete && order && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span>
+                        <Button
+                          variant="destructive"
+                          disabled={!!actionLoading || order.state !== "cancel"}
+                          onClick={() => handleAction("delete", onDelete)}
+                        >
+                          {actionLoading === "delete" ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
+                          Delete
+                        </Button>
+                      </span>
+                    </TooltipTrigger>
+                    {order.state !== "cancel" && (
+                      <TooltipContent>
+                        PO must be cancelled before it can be deleted
+                      </TooltipContent>
+                    )}
+                  </Tooltip>
+                )}
+              </div>
+            </TooltipProvider>
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
+              Close
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
