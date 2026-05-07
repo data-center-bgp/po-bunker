@@ -306,9 +306,8 @@ const ViewOrderModal = ({
                         <TableHead>Vessel</TableHead>
                         <TableHead className="text-right">Quantity</TableHead>
                         <TableHead className="text-right">Unit Price</TableHead>
-                        <TableHead className="text-right">
-                          Total Price
-                        </TableHead>
+                        <TableHead className="text-right">Subtotal</TableHead>
+                        <TableHead className="text-right">Total</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -329,17 +328,17 @@ const ViewOrderModal = ({
                               {formatCurrency(line.price_unit || 0)}
                             </TableCell>
                             <TableCell className="text-right">
-                              {formatCurrency(
-                                (line.product_qty || 0) *
-                                  (line.price_unit || 0),
-                              )}
+                              {formatCurrency(line.price_subtotal || 0)}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {formatCurrency(line.price_total || 0)}
                             </TableCell>
                           </TableRow>
                         ))
                       ) : (
                         <TableRow>
                           <TableCell
-                            colSpan={5}
+                            colSpan={6}
                             className="h-24 text-center text-muted-foreground"
                           >
                             No order items found.

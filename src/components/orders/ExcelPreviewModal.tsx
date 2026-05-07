@@ -10,6 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Loader2, Download } from "lucide-react";
 import { ordersApi } from "@/services/api/ordersApi";
+import DOMPurify from "dompurify";
 import * as XLSX from "xlsx";
 
 interface Props {
@@ -48,7 +49,7 @@ const ExcelPreviewModal: React.FC<Props> = ({
           const firstSheetName = wb.SheetNames[0];
           const sheet = wb.Sheets[firstSheetName];
           const html = XLSX.utils.sheet_to_html(sheet);
-          setHtmlPreview(html);
+          setHtmlPreview(DOMPurify.sanitize(html));
         } catch {
           // If parsing fails, we still keep the fileBuffer so user can download
           setHtmlPreview("<p>Preview not available for this file.</p>");
@@ -80,7 +81,7 @@ const ExcelPreviewModal: React.FC<Props> = ({
     document.body.appendChild(a);
     a.click();
     a.remove();
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
   return (
