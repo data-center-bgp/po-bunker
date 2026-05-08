@@ -2,6 +2,7 @@ import { useState, useEffect, type FormEvent } from "react";
 import {
   ordersApi,
   type Vessel,
+  type Region,
   type Company,
   type Partner,
   type Product,
@@ -29,7 +30,16 @@ import {
 } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { AlertCircle, Loader2, Package } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { AlertCircle, Check, ChevronDown, Loader2, Package } from "lucide-react";
 
 interface OrderFormData {
   companyId: string;
@@ -38,6 +48,7 @@ interface OrderFormData {
   productId: string;
   dateOrder: string;
   vesselId: string;
+  regionId: string;
   quantity: string;
   unitPrice: string;
   project: string;
@@ -61,6 +72,7 @@ const initialFormData: OrderFormData = {
   productId: "",
   dateOrder: "",
   vesselId: "",
+  regionId: "",
   quantity: "",
   unitPrice: "",
   project: "",
@@ -78,11 +90,14 @@ const OrderForm = ({
 }: OrderFormProps) => {
   const [formData, setFormData] = useState<OrderFormData>(initialFormData);
   const [vessels, setVessels] = useState<Vessel[]>([]);
+  const [regions, setRegions] = useState<Region[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [partners, setPartners] = useState<Partner[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingVessels, setLoadingVessels] = useState(true);
+  const [loadingRegions, setLoadingRegions] = useState(true);
+  const [regionOpen, setRegionOpen] = useState(false);
   const [loadingCompanies, setLoadingCompanies] = useState(true);
   const [loadingPartners, setLoadingPartners] = useState(true);
   const [loadingProducts, setLoadingProducts] = useState(true);
@@ -92,6 +107,7 @@ const OrderForm = ({
   useEffect(() => {
     if (isOpen) {
       fetchVessels();
+      fetchRegions();
       fetchCompanies();
       fetchPartners();
       fetchProducts();
@@ -111,6 +127,7 @@ const OrderForm = ({
         ? order.date_order.replace(" ", "T").slice(0, 16)
         : "",
       vesselId: firstLine?.vessel_id?.toString?.() || "",
+      regionId: firstLine?.region_id?.toString?.() || "",
       quantity: firstLine?.product_qty?.toString?.() || "",
       unitPrice: firstLine?.price_unit?.toString?.() || "",
       project: firstLine?.project_name || "",
@@ -127,6 +144,18 @@ const OrderForm = ({
       if (prod) setSelectedProduct(prod);
     }
   }, [isOpen, order, products]);
+
+  const fetchRegions = async () => {
+    try {
+      setLoadingRegions(true);
+      const response = await ordersApi.getRegions();
+      setRegions(response.regions || []);
+    } catch (err) {
+      console.error("Error fetching regions:", err);
+    } finally {
+      setLoadingRegions(false);
+    }
+  };
 
   const fetchVessels = async () => {
     try {
@@ -248,6 +277,7 @@ const OrderForm = ({
         total_price:
           parseFloat(formData.quantity) * parseFloat(formData.unitPrice),
         vessel_id: parseInt(formData.vesselId),
+        region_id: formData.regionId ? parseInt(formData.regionId) : null,
         category_id: parseInt(formData.categoryId),
         code_budget_id: formData.codeBudgetId
           ? parseInt(formData.codeBudgetId)
@@ -507,6 +537,67 @@ const OrderForm = ({
                         ))}
                       </SelectContent>
                     </Select>
+                  </div>
+
+                  {/* Region */}
+                  <div className="space-y-2">
+                    <Label>Region</Label>
+                    <Popover open={regionOpen} onOpenChange={setRegionOpen}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          role="combobox"
+                          disabled={loadingRegions}
+                          className="w-full justify-between font-normal"
+                        >
+                          <span className="truncate">
+                            {loadingRegions
+                              ? "Loading..."
+                              : formData.regionId
+                                ? (regions.find(
+                                    (r) => r.id.toString() === formData.regionId,
+                                  )?.name ?? "Select region")
+                                : "Select region"}
+                          </span>
+                          <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                        <Command>
+                          <CommandInput placeholder="Search region..." />
+                          <CommandList>
+                            <CommandEmpty>No region found.</CommandEmpty>
+                            <CommandGroup>
+                              {regions.map((region) => (
+                                <CommandItem
+                                  key={region.id}
+                                  value={region.name}
+                                  onSelect={() => {
+                                    handleSelectChange(
+                                      "regionId",
+                                      formData.regionId === region.id.toString()
+                                        ? ""
+                                        : region.id.toString(),
+                                    );
+                                    setRegionOpen(false);
+                                  }}
+                                >
+                                  <Check
+                                    className={`mr-2 h-4 w-4 ${
+                                      formData.regionId === region.id.toString()
+                                        ? "opacity-100"
+                                        : "opacity-0"
+                                    }`}
+                                  />
+                                  {region.name}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
                   </div>
 
                   {/* Category (auto) */}

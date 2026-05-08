@@ -112,51 +112,11 @@ const OrdersTable = ({
       setDeleting(false);
     }
   };
-  const getStatusVariant = (
-    state: string,
-  ): "success" | "warning" | "info" | "destructive" | "secondary" => {
-    switch (state) {
-      case "purchase":
-      case "done":
-        return "success";
-      case "to approve":
-        return "warning";
-      case "draft":
-        return "info";
-      case "cancel":
-        return "destructive";
-      default:
-        return "secondary";
-    }
-  };
-
-  const getStatusLabel = (state: string) => {
-    const statusMap: Record<string, string> = {
-      draft: "Draft",
-      "to approve": "Pending",
-      purchase: "Approved",
-      done: "Completed",
-      cancel: "Cancelled",
-    };
-    return statusMap[state] || state;
-  };
-
-  const getOrderTypeLabel = (type: string) => {
-    const typeMap: Record<string, string> = {
-      bunker_fuel: "Bunker Fuel",
-      bunker_water: "Bunker Fresh Water",
-      logistic: "Logistic",
-    };
-    return typeMap[type] || type;
-  };
-
-  const formatCurrency = (amount: number, currency: string = "IDR") => {
-    return new Intl.NumberFormat("id-ID", {
-      style: "currency",
-      currency,
-      minimumFractionDigits: 0,
-    }).format(amount);
-  };
+  const stripHtml = (html: string) =>
+    html
+      .replace(/<[^>]*>/g, "")
+      .replace(/&nbsp;/g, " ")
+      .trim();
 
   const totalPages = Math.max(1, Math.ceil(totalCount / limit));
   const startItem = orders.length > 0 ? (currentPage - 1) * limit + 1 : 0;
@@ -190,179 +150,174 @@ const OrdersTable = ({
     );
   }
 
-  const renderOrderRow = (order: PurchaseOrder) => (
-    <TableRow key={order.id}>
-      <TableCell className="font-medium">{order.name}</TableCell>
-      <TableCell>{getOrderTypeLabel(order.order_type)}</TableCell>
-      <TableCell>
-        {new Date(order.date_order).toLocaleDateString("en-US", {
-          year: "numeric",
-          month: "short",
-          day: "numeric",
-        })}
-      </TableCell>
-      <TableCell>
-        {new Date(order.date_planned).toLocaleDateString("en-US", {
-          year: "numeric",
-          month: "short",
-          day: "numeric",
-        })}
-      </TableCell>
-      <TableCell>{order.company_name || "-"}</TableCell>
-      <TableCell>{order.partner_name || "-"}</TableCell>
-      <TableCell className="text-right">
-        {order.amount_total
-          ? formatCurrency(order.amount_total, order.currency_name)
-          : "-"}
-      </TableCell>
-      <TableCell>
-        <Badge variant={getStatusVariant(order.state)}>
-          {getStatusLabel(order.state)}
-        </Badge>
-      </TableCell>
-      <TableCell>
-        <div className="flex items-center justify-center gap-1">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-                onClick={() => onView?.(order.id)}
-              >
-                <Eye className="h-4 w-4 text-muted-foreground" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>View</TooltipContent>
-          </Tooltip>
-          {onEdit && (
+  const renderOrderRow = (order: PurchaseOrder) => {
+    const line = order.order_lines?.[0];
+    return (
+      <TableRow key={order.id}>
+        <TableCell>
+          {new Date(order.date_order).toLocaleDateString("en-US", {
+            year: "numeric",
+            month: "short",
+            day: "numeric",
+          })}
+        </TableCell>
+        <TableCell>{order.company_name || "-"}</TableCell>
+        <TableCell className="font-medium">{order.name}</TableCell>
+        <TableCell>{line?.vessel_name || "-"}</TableCell>
+        <TableCell>{line?.region_name || "-"}</TableCell>
+        <TableCell>{line?.name || "-"}</TableCell>
+        <TableCell>
+          {line ? `${line.product_qty} ${line.product_uom_name ?? ""}` : "-"}
+        </TableCell>
+        <TableCell className="max-w-[200px] truncate">
+          {order.notes ? stripHtml(order.notes) : "-"}
+        </TableCell>
+        <TableCell>
+          <div className="flex items-center justify-center gap-1">
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
                   variant="ghost"
                   size="icon"
                   className="h-8 w-8"
-                  onClick={() => onEdit(order)}
+                  onClick={() => onView?.(order.id)}
                 >
-                  <Pencil className="h-4 w-4 text-muted-foreground" />
+                  <Eye className="h-4 w-4 text-muted-foreground" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Edit</TooltipContent>
+              <TooltipContent>View</TooltipContent>
             </Tooltip>
-          )}
-          {onConfirm && order.state === "draft" && (
+            {onEdit && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => onEdit(order)}
+                  >
+                    <Pencil className="h-4 w-4 text-muted-foreground" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Edit</TooltipContent>
+              </Tooltip>
+            )}
+            {onConfirm && order.state === "draft" && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-green-600 hover:text-green-700"
+                    disabled={confirmingId === order.id}
+                    onClick={async () => {
+                      setConfirmingId(order.id);
+                      try {
+                        await onConfirm(order.id);
+                      } finally {
+                        setConfirmingId(null);
+                      }
+                    }}
+                  >
+                    {confirmingId === order.id ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <CheckCircle className="h-4 w-4" />
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Confirm Order</TooltipContent>
+              </Tooltip>
+            )}
+            {onCancel &&
+              order.state !== "cancel" &&
+              order.state !== "draft" && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-orange-600 hover:text-orange-700"
+                      disabled={cancellingId === order.id}
+                      onClick={async () => {
+                        setCancellingId(order.id);
+                        try {
+                          await onCancel(order.id);
+                        } finally {
+                          setCancellingId(null);
+                        }
+                      }}
+                    >
+                      {cancellingId === order.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <XCircle className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Cancel PO</TooltipContent>
+                </Tooltip>
+              )}
+            {onSetDraft && order.state === "cancel" && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-blue-600 hover:text-blue-700"
+                    disabled={draftingId === order.id}
+                    onClick={async () => {
+                      setDraftingId(order.id);
+                      try {
+                        await onSetDraft(order.id);
+                      } finally {
+                        setDraftingId(null);
+                      }
+                    }}
+                  >
+                    {draftingId === order.id ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <FileText className="h-4 w-4" />
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Set to Draft</TooltipContent>
+              </Tooltip>
+            )}
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 text-green-600 hover:text-green-700"
-                  disabled={confirmingId === order.id}
-                  onClick={async () => {
-                    setConfirmingId(order.id);
-                    try {
-                      await onConfirm(order.id);
-                    } finally {
-                      setConfirmingId(null);
-                    }
-                  }}
+                  className="h-8 w-8"
+                  onClick={() => openPreview(order.id)}
                 >
-                  {confirmingId === order.id ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <CheckCircle className="h-4 w-4" />
-                  )}
+                  <Download className="h-4 w-4 text-muted-foreground" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Confirm Order</TooltipContent>
+              <TooltipContent>Preview / Download Excel</TooltipContent>
             </Tooltip>
-          )}
-          {onCancel && order.state !== "cancel" && order.state !== "draft" && (
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 text-orange-600 hover:text-orange-700"
-                  disabled={cancellingId === order.id}
-                  onClick={async () => {
-                    setCancellingId(order.id);
-                    try {
-                      await onCancel(order.id);
-                    } finally {
-                      setCancellingId(null);
-                    }
-                  }}
+                  className="h-8 w-8 text-destructive hover:text-destructive"
+                  onClick={() =>
+                    openDeleteConfirm(order.id, order.name, order.state)
+                  }
                 >
-                  {cancellingId === order.id ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <XCircle className="h-4 w-4" />
-                  )}
+                  <Trash2 className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Cancel PO</TooltipContent>
+              <TooltipContent>Delete</TooltipContent>
             </Tooltip>
-          )}
-          {onSetDraft && order.state === "cancel" && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 text-blue-600 hover:text-blue-700"
-                  disabled={draftingId === order.id}
-                  onClick={async () => {
-                    setDraftingId(order.id);
-                    try {
-                      await onSetDraft(order.id);
-                    } finally {
-                      setDraftingId(null);
-                    }
-                  }}
-                >
-                  {draftingId === order.id ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <FileText className="h-4 w-4" />
-                  )}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Set to Draft</TooltipContent>
-            </Tooltip>
-          )}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-                onClick={() => openPreview(order.id)}
-              >
-                <Download className="h-4 w-4 text-muted-foreground" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Preview / Download Excel</TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-destructive hover:text-destructive"
-                onClick={() =>
-                  openDeleteConfirm(order.id, order.name, order.state)
-                }
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Delete</TooltipContent>
-          </Tooltip>
-        </div>
-      </TableCell>
-    </TableRow>
-  );
+          </div>
+        </TableCell>
+      </TableRow>
+    );
+  };
 
   const filterButtons: {
     key: typeof stateFilter;
@@ -421,14 +376,14 @@ const OrdersTable = ({
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/50 hover:bg-muted/50">
-                <TableHead>PO Number</TableHead>
-                <TableHead>PO Type</TableHead>
                 <TableHead>Order Date</TableHead>
-                <TableHead>Planned Date</TableHead>
                 <TableHead>Company</TableHead>
-                <TableHead>Customer</TableHead>
-                <TableHead className="text-right">Amount Total</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>PO Number</TableHead>
+                <TableHead>Vessel</TableHead>
+                <TableHead>Region</TableHead>
+                <TableHead>Product</TableHead>
+                <TableHead>Qty</TableHead>
+                <TableHead>Notes</TableHead>
                 <TableHead className="text-center">Actions</TableHead>
               </TableRow>
             </TableHeader>

@@ -24,10 +24,14 @@ const OrdersPage = () => {
       setError(null);
       const response = await ordersApi.getOrders(currentPage, limit);
       console.log("API Response:", response);
-      setOrders(response.purchase_orders || []);
-      setTotalCount(
-        response.total_count || response.purchase_orders?.length || 0,
+      const basicOrders = response.purchase_orders || [];
+      setTotalCount(response.total_count || basicOrders.length);
+
+      // Parallel-fetch full order details to get order_lines for each order
+      const fullOrders = await Promise.all(
+        basicOrders.map((o) => ordersApi.getOrderById(o.id)),
       );
+      setOrders(fullOrders);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to fetch orders");
       console.error("Error fetching orders:", err);

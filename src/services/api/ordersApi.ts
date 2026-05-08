@@ -127,6 +127,16 @@ export interface VesselsResponse {
   shipping_vessels: Vessel[];
 }
 
+export interface Region {
+  id: number;
+  name: string;
+  code: string | null;
+}
+
+export interface RegionsResponse {
+  regions: Region[];
+}
+
 export interface Company {
   id: number;
   name: string;
@@ -242,6 +252,7 @@ export interface CreateOrderRequest {
     price_unit: number;
     total_price: number;
     vessel_id: number;
+    region_id: number | null;
     category_id: number;
     code_budget_id: number | null;
     uom_id: number;
@@ -263,6 +274,7 @@ export interface UpdateOrderRequest {
     price_unit: number;
     total_price: number;
     vessel_id: number;
+    region_id: number | null;
     category_id: number;
     code_budget_id: number | null;
     uom_id: number;
@@ -295,6 +307,29 @@ export const ordersApi = {
       }
       const errorText = await response.text();
       throw new Error(errorText || "Failed to fetch orders");
+    }
+
+    return response.json();
+  },
+
+  getRegions: async (): Promise<RegionsResponse> => {
+    const token = tokenManager.getToken();
+
+    if (!token) {
+      throw new Error("No access token found");
+    }
+
+    const response = await fetch(`${API_URL}/api/regions`, {
+      method: "GET",
+      headers: getAuthHeaders(token),
+    });
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        throw new Error("Unauthorized. Please login again.");
+      }
+      const errorText = await response.text();
+      throw new Error(errorText || "Failed to fetch regions");
     }
 
     return response.json();
