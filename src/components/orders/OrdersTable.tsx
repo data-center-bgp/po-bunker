@@ -23,13 +23,15 @@ import {
   ChevronLeft,
   ChevronRight,
   Loader2,
+  Printer,
   Download,
   AlertCircle,
   CheckCircle,
   XCircle,
   FileText,
 } from "lucide-react";
-import ExcelPreviewModal from "./ExcelPreviewModal";
+import { ordersApi } from "@/services/api/ordersApi";
+import PdfPreviewModal from "./PdfPreviewModal";
 import {
   Dialog,
   DialogContent,
@@ -69,8 +71,10 @@ const OrdersTable = ({
   onCancel,
   onSetDraft,
 }: OrdersTableProps) => {
-  const [previewOrderId, setPreviewOrderId] = useState<number | null>(null);
-  const [previewOpen, setPreviewOpen] = useState(false);
+  const [pdfLoadingId, setPdfLoadingId] = useState<number | null>(null);
+  const [excelLoadingId, setExcelLoadingId] = useState<number | null>(null);
+  const [pdfModalUrl, setPdfModalUrl] = useState<string | null>(null);
+  const [pdfModalOpen, setPdfModalOpen] = useState(false);
   const [deleteOrderId, setDeleteOrderId] = useState<number | null>(null);
   const [deleteOrderName, setDeleteOrderName] = useState<string>("");
   const [deleteOrderState, setDeleteOrderState] = useState<string>("");
@@ -81,9 +85,49 @@ const OrdersTable = ({
   const [cancellingId, setCancellingId] = useState<number | null>(null);
   const [draftingId, setDraftingId] = useState<number | null>(null);
 
-  const openPreview = (id: number) => {
-    setPreviewOrderId(id);
-    setPreviewOpen(true);
+  const handleOpenPdf = async (id: number) => {
+    setPdfLoadingId(id);
+    try {
+      const buffer = await ordersApi.generatePdf(id);
+      const blob = new Blob([buffer], { type: "application/pdf" });
+      const url = URL.createObjectURL(blob);
+      setPdfModalUrl(url);
+      setPdfModalOpen(true);
+    } catch (err) {
+      console.error("PDF generation failed:", err);
+    } finally {
+      setPdfLoadingId(null);
+    }
+  };
+
+  const handleClosePdfModal = () => {
+    setPdfModalOpen(false);
+    if (pdfModalUrl) {
+      URL.revokeObjectURL(pdfModalUrl);
+      setPdfModalUrl(null);
+    }
+  };
+
+  const handleDownloadExcel = async (id: number, name: string) => {
+    setExcelLoadingId(id);
+    try {
+      const buffer = await ordersApi.generateExcel(id);
+      const blob = new Blob([buffer], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${name}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (err) {
+      console.error("Excel download failed:", err);
+    } finally {
+      setExcelLoadingId(null);
+    }
   };
 
   const openDeleteConfirm = (id: number, name: string, state: string) => {
@@ -291,12 +335,35 @@ const OrdersTable = ({
                   variant="ghost"
                   size="icon"
                   className="h-8 w-8"
-                  onClick={() => openPreview(order.id)}
+                  onClick={() => handleOpenPdf(order.id)}
+                  disabled={pdfLoadingId === order.id}
                 >
-                  <Download className="h-4 w-4 text-muted-foreground" />
+                  {pdfLoadingId === order.id ? (
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  ) : (
+                    <Printer className="h-4 w-4 text-muted-foreground" />
+                  )}
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Preview / Download Excel</TooltipContent>
+              <TooltipContent>Preview PDF</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => handleDownloadExcel(order.id, order.name)}
+                  disabled={excelLoadingId === order.id}
+                >
+                  {excelLoadingId === order.id ? (
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  ) : (
+                    <Download className="h-4 w-4 text-muted-foreground" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Download Excel</TooltipContent>
             </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -549,13 +616,11 @@ const OrdersTable = ({
           </DialogContent>
         </Dialog>
 
-        <ExcelPreviewModal
-          orderId={previewOrderId}
-          open={previewOpen}
-          onOpenChange={(open) => {
-            setPreviewOpen(open);
-            if (!open) setPreviewOrderId(null);
-          }}
+        {/* PDF Preview Modal */}
+        <PdfPreviewModal
+          pdfUrl={pdfModalUrl}
+          open={pdfModalOpen}
+          onClose={handleClosePdfModal}
         />
       </div>
     </TooltipProvider>

@@ -483,6 +483,36 @@ export const ordersApi = {
     return response.arrayBuffer();
   },
 
+  /**
+   * Generate PDF for a purchase order by id.
+   * Returns an ArrayBuffer of the PDF file.
+   */
+  generatePdf: async (id: number): Promise<ArrayBuffer> => {
+    const token = tokenManager.getToken();
+
+    if (!token) {
+      throw new Error("No access token found");
+    }
+
+    const response = await fetch(
+      `${API_URL}/api/purchase-orders/${id}/generate-pdf`,
+      {
+        method: "GET",
+        headers: getAuthHeaders(token),
+      },
+    );
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        throw new Error("Unauthorized. Please login again.");
+      }
+      const errorText = await response.text();
+      throw new Error(errorText || "Failed to generate PDF");
+    }
+
+    return response.arrayBuffer();
+  },
+
   updateOrder: async (
     id: number,
     orderData: UpdateOrderRequest,
