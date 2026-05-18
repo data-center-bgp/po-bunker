@@ -30,7 +30,11 @@ import {
 } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Command,
   CommandEmpty,
@@ -39,7 +43,13 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import { AlertCircle, Check, ChevronDown, Loader2, Package } from "lucide-react";
+import {
+  AlertCircle,
+  Check,
+  ChevronDown,
+  Loader2,
+  Package,
+} from "lucide-react";
 
 interface OrderFormData {
   companyId: string;
@@ -556,7 +566,8 @@ const OrderForm = ({
                               ? "Loading..."
                               : formData.regionId
                                 ? (regions.find(
-                                    (r) => r.id.toString() === formData.regionId,
+                                    (r) =>
+                                      r.id.toString() === formData.regionId,
                                   )?.name ?? "Select region")
                                 : "Select region"}
                           </span>
