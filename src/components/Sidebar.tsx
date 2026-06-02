@@ -12,13 +12,12 @@ import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
   ClipboardList,
-  Settings,
   LogOut,
   ChevronsLeft,
   ChevronsRight,
 } from "lucide-react";
 
-export type TabType = "overview" | "orders" | "settings";
+export type TabType = "overview" | "orders";
 
 interface Tab {
   id: TabType;
@@ -53,11 +52,6 @@ const Sidebar = ({
       id: "orders",
       name: "Orders",
       icon: <ClipboardList className="h-5 w-5" />,
-    },
-    {
-      id: "settings",
-      name: "Settings",
-      icon: <Settings className="h-5 w-5" />,
     },
   ];
 
