@@ -127,14 +127,40 @@ export interface VesselsResponse {
   shipping_vessels: Vessel[];
 }
 
+export interface RegionCompanyRef {
+  id: number;
+  name: string;
+}
+
 export interface Region {
   id: number;
   name: string;
   code: string | null;
+  description?: string | false | null;
+  active?: boolean;
+  level_region?: string | null;
+  bps_code?: number | null;
+  parent_id?: number | null;
+  parent_name?: string | null;
+  parent_code?: string | null;
+  child_count?: number;
+  children?: Region[];
+  companies?: RegionCompanyRef[];
+  companies_count?: number;
+  create_date?: string;
+  write_date?: string;
+}
+
+export interface RegionsPagination {
+  page: number;
+  limit: number;
+  total_records: number;
+  total_pages: number;
 }
 
 export interface RegionsResponse {
   regions: Region[];
+  pagination?: RegionsPagination;
 }
 
 export interface Company {
@@ -319,20 +345,33 @@ export const ordersApi = {
       throw new Error("No access token found");
     }
 
-    const response = await fetch(`${API_URL}/api/regions`, {
-      method: "GET",
-      headers: getAuthHeaders(token),
-    });
-
-    if (!response.ok) {
-      if (response.status === 401) {
-        throw new Error("Unauthorized. Please login again.");
+    const fetchPage = async (page: number, limit: number) => {
+      const response = await fetch(
+        `${API_URL}/api/regions?page=${page}&limit=${limit}`,
+        {
+          method: "GET",
+          headers: getAuthHeaders(token),
+        },
+      );
+      if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error("Unauthorized. Please login again.");
+        }
+        const errorText = await response.text();
+        throw new Error(errorText || "Failed to fetch regions");
       }
-      const errorText = await response.text();
-      throw new Error(errorText || "Failed to fetch regions");
-    }
+      return response.json() as Promise<RegionsResponse>;
+    };
 
-    return response.json();
+    const limit = 200;
+    const first = await fetchPage(1, limit);
+    const all: Region[] = [...(first.regions || [])];
+    const totalPages = first.pagination?.total_pages ?? 1;
+    for (let page = 2; page <= totalPages; page++) {
+      const next = await fetchPage(page, limit);
+      all.push(...(next.regions || []));
+    }
+    return { regions: all, pagination: first.pagination };
   },
 
   getVessels: async (): Promise<VesselsResponse> => {
