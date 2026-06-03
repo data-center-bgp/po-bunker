@@ -1,14 +1,37 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/useAuth";
 import Sidebar, { type TabType } from "@/components/Sidebar";
 import OrdersPage from "@/components/orders/OrderPage";
 import { cn } from "@/lib/utils";
 import { Construction } from "lucide-react";
 
+const ACTIVE_TAB_STORAGE_KEY = "po-bunker:active-tab";
+const VALID_TABS: TabType[] = ["overview", "orders"];
+
+const getInitialTab = (): TabType => {
+  try {
+    const stored = localStorage.getItem(ACTIVE_TAB_STORAGE_KEY);
+    if (stored && VALID_TABS.includes(stored as TabType)) {
+      return stored as TabType;
+    }
+  } catch {
+    // localStorage unavailable
+  }
+  return "overview";
+};
+
 const Dashboard = () => {
   const { logout } = useAuth();
-  const [activeTab, setActiveTab] = useState<TabType>("overview");
+  const [activeTab, setActiveTab] = useState<TabType>(getInitialTab);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(ACTIVE_TAB_STORAGE_KEY, activeTab);
+    } catch {
+      // localStorage unavailable
+    }
+  }, [activeTab]);
 
   const handleLogout = () => {
     logout();

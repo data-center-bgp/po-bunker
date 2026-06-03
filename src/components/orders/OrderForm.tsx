@@ -49,23 +49,30 @@ import {
   ChevronDown,
   Loader2,
   Package,
+  Plus,
+  Trash2,
 } from "lucide-react";
 
-interface OrderFormData {
-  companyId: string;
-  partnerId: string;
-  orderType: string;
+interface LineFormData {
+  id?: number; // existing line id when editing
   productId: string;
-  dateOrder: string;
   vesselId: string;
   regionId: string;
   quantity: string;
   unitPrice: string;
   project: string;
-  notes: string;
+  // auto-populated from product
   categoryId: string;
   codeBudgetId: string;
   uomId: string;
+}
+
+interface OrderHeaderData {
+  companyId: string;
+  partnerId: string;
+  orderType: string;
+  dateOrder: string;
+  notes: string;
 }
 
 interface OrderFormProps {
@@ -75,22 +82,32 @@ interface OrderFormProps {
   order?: PurchaseOrder | null;
 }
 
-const initialFormData: OrderFormData = {
-  companyId: "",
-  partnerId: "",
-  orderType: "",
+const emptyLine: LineFormData = {
   productId: "",
-  dateOrder: "",
   vesselId: "",
   regionId: "",
   quantity: "",
   unitPrice: "",
   project: "",
-  notes: "",
   categoryId: "",
   codeBudgetId: "",
   uomId: "",
 };
+
+const initialHeader: OrderHeaderData = {
+  companyId: "",
+  partnerId: "",
+  orderType: "",
+  dateOrder: "",
+  notes: "",
+};
+
+const formatCurrency = (n: number) =>
+  new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    minimumFractionDigits: 0,
+  }).format(n);
 
 const OrderForm = ({
   isOpen,
@@ -98,7 +115,8 @@ const OrderForm = ({
   onCancel,
   order = null,
 }: OrderFormProps) => {
-  const [formData, setFormData] = useState<OrderFormData>(initialFormData);
+  const [header, setHeader] = useState<OrderHeaderData>(initialHeader);
+  const [lines, setLines] = useState<LineFormData[]>([{ ...emptyLine }]);
   const [vessels, setVessels] = useState<Vessel[]>([]);
   const [regions, setRegions] = useState<Region[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
@@ -107,12 +125,13 @@ const OrderForm = ({
   const [loading, setLoading] = useState(false);
   const [loadingVessels, setLoadingVessels] = useState(true);
   const [loadingRegions, setLoadingRegions] = useState(true);
-  const [regionOpen, setRegionOpen] = useState(false);
   const [loadingCompanies, setLoadingCompanies] = useState(true);
   const [loadingPartners, setLoadingPartners] = useState(true);
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [regionOpenIdx, setRegionOpenIdx] = useState<number | null>(null);
+
+  const isEditing = !!order && !!order.id;
 
   useEffect(() => {
     if (isOpen) {
@@ -124,36 +143,44 @@ const OrderForm = ({
     }
   }, [isOpen]);
 
-  // populate when order or products change while form is open
+  // Populate when editing
   useEffect(() => {
-    if (!isOpen || !order) return;
-    const firstLine = order.order_lines?.[0];
-    setFormData({
+    if (!isOpen) return;
+    if (!order) {
+      setHeader(initialHeader);
+      setLines([{ ...emptyLine }]);
+      return;
+    }
+    setHeader({
       companyId: order.company_id?.toString?.() || "",
       partnerId: order.partner_id?.toString?.() || "",
       orderType: order.order_type || "",
-      productId: firstLine?.product_id?.toString?.() || "",
       dateOrder: order.date_order
         ? order.date_order.replace(" ", "T").slice(0, 16)
         : "",
-      vesselId: firstLine?.vessel_id?.toString?.() || "",
-      regionId: firstLine?.region_id?.toString?.() || "",
-      quantity: firstLine?.product_qty?.toString?.() || "",
-      unitPrice: firstLine?.price_unit?.toString?.() || "",
-      project: firstLine?.project_name || "",
       notes: order.notes || "",
-      categoryId: firstLine?.divisi_id?.toString?.() || "",
-      codeBudgetId: firstLine?.code_budget_id
-        ? firstLine.code_budget_id.toString()
-        : "",
-      uomId: firstLine?.product_uom?.toString?.() || "",
     });
 
-    if (firstLine && products.length > 0) {
-      const prod = products.find((p) => p.id === firstLine?.product_id);
-      if (prod) setSelectedProduct(prod);
+    const orderLines = order.order_lines || [];
+    if (orderLines.length === 0) {
+      setLines([{ ...emptyLine }]);
+    } else {
+      setLines(
+        orderLines.map((l) => ({
+          id: l.id,
+          productId: l.product_id?.toString() || "",
+          vesselId: l.vessel_id?.toString() || "",
+          regionId: l.region_id ? l.region_id.toString() : "",
+          quantity: l.product_qty?.toString() || "",
+          unitPrice: l.price_unit?.toString() || "",
+          project: l.project_name || "",
+          categoryId: l.divisi_id?.toString() || "",
+          codeBudgetId: l.code_budget_id ? l.code_budget_id.toString() : "",
+          uomId: l.product_uom?.toString() || "",
+        })),
+      );
     }
-  }, [isOpen, order, products]);
+  }, [isOpen, order]);
 
   const fetchRegions = async () => {
     try {
@@ -221,88 +248,104 @@ const OrderForm = ({
     }
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+  const updateLine = (idx: number, patch: Partial<LineFormData>) => {
+    setLines((prev) =>
+      prev.map((l, i) => (i === idx ? { ...l, ...patch } : l)),
+    );
   };
 
-  const handleSelectChange = (name: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleProductChange = (productId: string) => {
+  const handleProductChange = (idx: number, productId: string) => {
     const product = products.find((p) => p.id === parseInt(productId));
-
     if (product) {
-      setSelectedProduct(product);
-      setFormData((prev) => ({
-        ...prev,
-        productId: productId,
+      updateLine(idx, {
+        productId,
         categoryId: product.categ_id.toString(),
         codeBudgetId: product.code_budget_id?.toString() || "",
         uomId: product.uom_id.toString(),
-      }));
+      });
     } else {
-      setSelectedProduct(null);
-      setFormData((prev) => ({
-        ...prev,
+      updateLine(idx, {
         productId: "",
         categoryId: "",
         codeBudgetId: "",
         uomId: "",
-      }));
+      });
     }
   };
+
+  const addLine = () => {
+    setLines((prev) => [...prev, { ...emptyLine }]);
+  };
+
+  const removeLine = (idx: number) => {
+    setLines((prev) =>
+      prev.length === 1 ? prev : prev.filter((_, i) => i !== idx),
+    );
+  };
+
+  const grandTotal = lines.reduce((sum, l) => {
+    const q = parseFloat(l.quantity);
+    const p = parseFloat(l.unitPrice);
+    if (Number.isNaN(q) || Number.isNaN(p)) return sum;
+    return sum + q * p;
+  }, 0);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
 
-    // Validate required fields
     if (
-      !formData.companyId ||
-      !formData.partnerId ||
-      !formData.orderType ||
-      !formData.productId ||
-      !formData.dateOrder ||
-      !formData.vesselId ||
-      !formData.quantity ||
-      !formData.unitPrice ||
-      !formData.uomId
+      !header.companyId ||
+      !header.partnerId ||
+      !header.orderType ||
+      !header.dateOrder
     ) {
-      setError("Please fill in all required fields.");
+      setError("Please fill in all required header fields.");
       setLoading(false);
       return;
     }
 
+    for (let i = 0; i < lines.length; i++) {
+      const l = lines[i];
+      if (
+        !l.productId ||
+        !l.vesselId ||
+        !l.quantity ||
+        !l.unitPrice ||
+        !l.uomId
+      ) {
+        setError(
+          `Line ${i + 1}: Please fill in product, vessel, quantity, and unit price.`,
+        );
+        setLoading(false);
+        return;
+      }
+    }
+
     try {
-      const orderLine = {
-        ...(isEditing && order?.order_lines?.[0]?.id
-          ? { id: order.order_lines[0].id }
-          : {}),
-        product_id: parseInt(formData.productId),
-        product_qty: parseFloat(formData.quantity),
-        price_unit: parseFloat(formData.unitPrice),
-        total_price:
-          parseFloat(formData.quantity) * parseFloat(formData.unitPrice),
-        vessel_id: parseInt(formData.vesselId),
-        region_id: formData.regionId ? parseInt(formData.regionId) : null,
-        category_id: parseInt(formData.categoryId),
-        code_budget_id: formData.codeBudgetId
-          ? parseInt(formData.codeBudgetId)
-          : null,
-        uom_id: parseInt(formData.uomId),
-        project: formData.project,
-      };
+      const orderLines = lines.map((l) => ({
+        ...(isEditing && l.id ? { id: l.id } : {}),
+        product_id: parseInt(l.productId),
+        product_qty: parseFloat(l.quantity),
+        price_unit: parseFloat(l.unitPrice),
+        total_price: parseFloat(l.quantity) * parseFloat(l.unitPrice),
+        vessel_id: parseInt(l.vesselId),
+        region_id: l.regionId ? parseInt(l.regionId) : null,
+        category_id: parseInt(l.categoryId),
+        code_budget_id: l.codeBudgetId ? parseInt(l.codeBudgetId) : null,
+        uom_id: parseInt(l.uomId),
+        project: l.project,
+      }));
 
       const orderData = {
-        company_id: parseInt(formData.companyId),
-        partner_id: parseInt(formData.partnerId),
-        order_type: formData.orderType,
-        date_order: formData.dateOrder.replace("T", " ") + ":00",
-        notes: formData.notes,
-        order_lines: [orderLine],
+        company_id: parseInt(header.companyId),
+        partner_id: parseInt(header.partnerId),
+        order_type: header.orderType,
+        date_order: header.dateOrder.replace("T", " ") + ":00",
+        notes: header.notes,
+        picking_type_id: 23,
+        order_lines: orderLines,
       };
       console.log("Submitting order data:", JSON.stringify(orderData, null, 2));
 
@@ -311,8 +354,8 @@ const OrderForm = ({
       } else {
         await ordersApi.createOrder(orderData);
       }
-      setFormData(initialFormData);
-      setSelectedProduct(null);
+      setHeader(initialHeader);
+      setLines([{ ...emptyLine }]);
       onSuccess();
     } catch (err) {
       setError(
@@ -332,17 +375,15 @@ const OrderForm = ({
   };
 
   const handleCancel = () => {
-    setFormData(initialFormData);
-    setSelectedProduct(null);
+    setHeader(initialHeader);
+    setLines([{ ...emptyLine }]);
     setError(null);
     onCancel();
   };
 
-  const isEditing = !!order && !!order.id;
-
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleCancel()}>
-      <DialogContent className="max-w-4xl max-h-[90vh] p-0">
+      <DialogContent className="max-w-5xl max-h-[90vh] p-0">
         <DialogHeader className="px-6 pt-6">
           <DialogTitle className="flex items-center gap-2">
             <Package className="h-5 w-5" />
@@ -373,15 +414,14 @@ const OrderForm = ({
                   Order Details
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Customer */}
                   <div className="space-y-2">
                     <Label>
                       Customer <span className="text-destructive">*</span>
                     </Label>
                     <Select
-                      value={formData.partnerId}
+                      value={header.partnerId}
                       onValueChange={(val) =>
-                        handleSelectChange("partnerId", val)
+                        setHeader((h) => ({ ...h, partnerId: val }))
                       }
                       disabled={loadingPartners}
                     >
@@ -405,15 +445,14 @@ const OrderForm = ({
                     </Select>
                   </div>
 
-                  {/* Company */}
                   <div className="space-y-2">
                     <Label>
                       Company <span className="text-destructive">*</span>
                     </Label>
                     <Select
-                      value={formData.companyId}
+                      value={header.companyId}
                       onValueChange={(val) =>
-                        handleSelectChange("companyId", val)
+                        setHeader((h) => ({ ...h, companyId: val }))
                       }
                       disabled={loadingCompanies}
                     >
@@ -437,15 +476,14 @@ const OrderForm = ({
                     </Select>
                   </div>
 
-                  {/* Order Type */}
                   <div className="space-y-2">
                     <Label>
                       Order Type <span className="text-destructive">*</span>
                     </Label>
                     <Select
-                      value={formData.orderType}
+                      value={header.orderType}
                       onValueChange={(val) =>
-                        handleSelectChange("orderType", val)
+                        setHeader((h) => ({ ...h, orderType: val }))
                       }
                     >
                       <SelectTrigger>
@@ -461,7 +499,6 @@ const OrderForm = ({
                     </Select>
                   </div>
 
-                  {/* Order Date */}
                   <div className="space-y-2">
                     <Label htmlFor="dateOrder">
                       Order Date & Time{" "}
@@ -471,8 +508,10 @@ const OrderForm = ({
                       type="datetime-local"
                       id="dateOrder"
                       name="dateOrder"
-                      value={formData.dateOrder}
-                      onChange={handleInputChange}
+                      value={header.dateOrder}
+                      onChange={(e) =>
+                        setHeader((h) => ({ ...h, dateOrder: e.target.value }))
+                      }
                       required
                     />
                   </div>
@@ -481,214 +520,296 @@ const OrderForm = ({
 
               <Separator />
 
-              {/* Product Details Section */}
+              {/* Product Lines Section */}
               <div>
-                <h4 className="text-sm font-semibold text-foreground mb-3">
-                  Product Details
-                </h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Product */}
-                  <div className="space-y-2">
-                    <Label>
-                      Product <span className="text-destructive">*</span>
-                    </Label>
-                    <Select
-                      value={formData.productId}
-                      onValueChange={handleProductChange}
-                      disabled={loadingProducts}
-                    >
-                      <SelectTrigger>
-                        <SelectValue
-                          placeholder={
-                            loadingProducts ? "Loading..." : "Select product"
-                          }
-                        />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {products.map((product) => (
-                          <SelectItem
-                            key={product.id}
-                            value={product.id.toString()}
-                          >
-                            {product.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-sm font-semibold text-foreground">
+                    Product Lines{" "}
+                    <span className="text-muted-foreground font-normal">
+                      ({lines.length})
+                    </span>
+                  </h4>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={addLine}
+                  >
+                    <Plus className="h-4 w-4 mr-1" />
+                    Add Line
+                  </Button>
+                </div>
 
-                  {/* Vessel */}
-                  <div className="space-y-2">
-                    <Label>
-                      Vessel <span className="text-destructive">*</span>
-                    </Label>
-                    <Select
-                      value={formData.vesselId}
-                      onValueChange={(val) =>
-                        handleSelectChange("vesselId", val)
-                      }
-                      disabled={loadingVessels}
-                    >
-                      <SelectTrigger>
-                        <SelectValue
-                          placeholder={
-                            loadingVessels ? "Loading..." : "Select vessel"
-                          }
-                        />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {vessels.map((vessel) => (
-                          <SelectItem
-                            key={vessel.id}
-                            value={vessel.id.toString()}
-                          >
-                            {vessel.type_name} - {vessel.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                <div className="space-y-4">
+                  {lines.map((line, idx) => {
+                    const selectedProduct = products.find(
+                      (p) => p.id.toString() === line.productId,
+                    );
+                    const lineSubtotal =
+                      parseFloat(line.quantity || "0") *
+                      parseFloat(line.unitPrice || "0");
 
-                  {/* Region */}
-                  <div className="space-y-2">
-                    <Label>Region</Label>
-                    <Popover open={regionOpen} onOpenChange={setRegionOpen}>
-                      <PopoverTrigger asChild>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          role="combobox"
-                          disabled={loadingRegions}
-                          className="w-full justify-between font-normal"
-                        >
-                          <span className="truncate">
-                            {loadingRegions
-                              ? "Loading..."
-                              : formData.regionId
-                                ? (regions.find(
-                                    (r) =>
-                                      r.id.toString() === formData.regionId,
-                                  )?.name ?? "Select region")
-                                : "Select region"}
+                    return (
+                      <div
+                        key={idx}
+                        className="rounded-lg border bg-muted/20 p-4 space-y-3"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                            Line {idx + 1}
                           </span>
-                          <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                        <Command>
-                          <CommandInput placeholder="Search region..." />
-                          <CommandList>
-                            <CommandEmpty>No region found.</CommandEmpty>
-                            <CommandGroup>
-                              {regions.map((region) => (
-                                <CommandItem
-                                  key={region.id}
-                                  value={region.name}
-                                  onSelect={() => {
-                                    handleSelectChange(
-                                      "regionId",
-                                      formData.regionId === region.id.toString()
-                                        ? ""
-                                        : region.id.toString(),
-                                    );
-                                    setRegionOpen(false);
-                                  }}
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-muted-foreground">
+                              Subtotal:{" "}
+                              <span className="font-semibold text-foreground">
+                                {formatCurrency(
+                                  Number.isNaN(lineSubtotal) ? 0 : lineSubtotal,
+                                )}
+                              </span>
+                            </span>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-destructive hover:text-destructive"
+                              onClick={() => removeLine(idx)}
+                              disabled={lines.length === 1}
+                              title={
+                                lines.length === 1
+                                  ? "At least one line is required"
+                                  : "Remove line"
+                              }
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label>
+                              Product{" "}
+                              <span className="text-destructive">*</span>
+                            </Label>
+                            <Select
+                              value={line.productId}
+                              onValueChange={(val) =>
+                                handleProductChange(idx, val)
+                              }
+                              disabled={loadingProducts}
+                            >
+                              <SelectTrigger>
+                                <SelectValue
+                                  placeholder={
+                                    loadingProducts
+                                      ? "Loading..."
+                                      : "Select product"
+                                  }
+                                />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {products.map((product) => (
+                                  <SelectItem
+                                    key={product.id}
+                                    value={product.id.toString()}
+                                  >
+                                    {product.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label>
+                              Vessel <span className="text-destructive">*</span>
+                            </Label>
+                            <Select
+                              value={line.vesselId}
+                              onValueChange={(val) =>
+                                updateLine(idx, { vesselId: val })
+                              }
+                              disabled={loadingVessels}
+                            >
+                              <SelectTrigger>
+                                <SelectValue
+                                  placeholder={
+                                    loadingVessels
+                                      ? "Loading..."
+                                      : "Select vessel"
+                                  }
+                                />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {vessels.map((vessel) => (
+                                  <SelectItem
+                                    key={vessel.id}
+                                    value={vessel.id.toString()}
+                                  >
+                                    {vessel.type_name} - {vessel.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label>Region</Label>
+                            <Popover
+                              open={regionOpenIdx === idx}
+                              onOpenChange={(open) =>
+                                setRegionOpenIdx(open ? idx : null)
+                              }
+                            >
+                              <PopoverTrigger asChild>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  role="combobox"
+                                  disabled={loadingRegions}
+                                  className="w-full justify-between font-normal"
                                 >
-                                  <Check
-                                    className={`mr-2 h-4 w-4 ${
-                                      formData.regionId === region.id.toString()
-                                        ? "opacity-100"
-                                        : "opacity-0"
-                                    }`}
-                                  />
-                                  {region.name}
-                                </CommandItem>
-                              ))}
-                            </CommandGroup>
-                          </CommandList>
-                        </Command>
-                      </PopoverContent>
-                    </Popover>
-                  </div>
+                                  <span className="truncate">
+                                    {loadingRegions
+                                      ? "Loading..."
+                                      : line.regionId
+                                        ? (regions.find(
+                                            (r) =>
+                                              r.id.toString() === line.regionId,
+                                          )?.name ?? "Select region")
+                                        : "Select region"}
+                                  </span>
+                                  <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                <Command>
+                                  <CommandInput placeholder="Search region..." />
+                                  <CommandList className="max-h-[300px] overflow-y-auto">
+                                    <CommandEmpty>
+                                      No region found.
+                                    </CommandEmpty>
+                                    <CommandGroup>
+                                      {regions.map((region) => (
+                                        <CommandItem
+                                          key={region.id}
+                                          value={region.name}
+                                          onSelect={() => {
+                                            updateLine(idx, {
+                                              regionId:
+                                                line.regionId ===
+                                                region.id.toString()
+                                                  ? ""
+                                                  : region.id.toString(),
+                                            });
+                                            setRegionOpenIdx(null);
+                                          }}
+                                        >
+                                          <Check
+                                            className={`mr-2 h-4 w-4 ${
+                                              line.regionId ===
+                                              region.id.toString()
+                                                ? "opacity-100"
+                                                : "opacity-0"
+                                            }`}
+                                          />
+                                          {region.name}
+                                        </CommandItem>
+                                      ))}
+                                    </CommandGroup>
+                                  </CommandList>
+                                </Command>
+                              </PopoverContent>
+                            </Popover>
+                          </div>
 
-                  {/* Category (auto) */}
-                  <div className="space-y-2">
-                    <Label>Category</Label>
-                    <Input
-                      value={selectedProduct?.categ_name || ""}
-                      readOnly
-                      placeholder="Auto-populated from product"
-                      className="bg-muted"
-                    />
-                  </div>
+                          <div className="space-y-2">
+                            <Label>Category</Label>
+                            <Input
+                              value={selectedProduct?.categ_name || ""}
+                              readOnly
+                              placeholder="Auto-populated"
+                              className="bg-muted"
+                            />
+                          </div>
 
-                  {/* Unit (auto) */}
-                  <div className="space-y-2">
-                    <Label>Unit</Label>
-                    <Input
-                      value={selectedProduct?.uom_name || ""}
-                      readOnly
-                      placeholder="Auto-populated from product"
-                      className="bg-muted"
-                    />
-                  </div>
+                          <div className="space-y-2">
+                            <Label>Unit</Label>
+                            <Input
+                              value={selectedProduct?.uom_name || ""}
+                              readOnly
+                              placeholder="Auto-populated"
+                              className="bg-muted"
+                            />
+                          </div>
 
-                  {/* Code Budget (auto) */}
-                  <div className="space-y-2">
-                    <Label>Code Budget</Label>
-                    <Input
-                      value={selectedProduct?.code_budget_name || "N/A"}
-                      readOnly
-                      placeholder="Auto-populated from product"
-                      className="bg-muted"
-                    />
-                  </div>
+                          <div className="space-y-2">
+                            <Label>Code Budget</Label>
+                            <Input
+                              value={selectedProduct?.code_budget_name || "N/A"}
+                              readOnly
+                              placeholder="Auto-populated"
+                              className="bg-muted"
+                            />
+                          </div>
 
-                  {/* Quantity */}
-                  <div className="space-y-2">
-                    <Label htmlFor="quantity">
-                      Quantity <span className="text-destructive">*</span>
-                    </Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      id="quantity"
-                      name="quantity"
-                      value={formData.quantity}
-                      onChange={handleInputChange}
-                      placeholder="Enter quantity"
-                      required
-                    />
-                  </div>
+                          <div className="space-y-2">
+                            <Label>
+                              Quantity{" "}
+                              <span className="text-destructive">*</span>
+                            </Label>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              value={line.quantity}
+                              onChange={(e) =>
+                                updateLine(idx, { quantity: e.target.value })
+                              }
+                              placeholder="Enter quantity"
+                              required
+                            />
+                          </div>
 
-                  {/* Project */}
-                  <div className="space-y-2">
-                    <Label htmlFor="project">Project</Label>
-                    <Input
-                      type="text"
-                      id="project"
-                      name="project"
-                      value={formData.project}
-                      onChange={handleInputChange}
-                      placeholder="Enter project name"
-                    />
-                  </div>
+                          <div className="space-y-2">
+                            <Label>
+                              Unit Price{" "}
+                              <span className="text-destructive">*</span>
+                            </Label>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              value={line.unitPrice}
+                              onChange={(e) =>
+                                updateLine(idx, { unitPrice: e.target.value })
+                              }
+                              placeholder="Enter unit price"
+                              required
+                            />
+                          </div>
 
-                  {/* Unit Price */}
-                  <div className="space-y-2">
-                    <Label htmlFor="unitPrice">
-                      Unit Price <span className="text-destructive">*</span>
-                    </Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      id="unitPrice"
-                      name="unitPrice"
-                      value={formData.unitPrice}
-                      onChange={handleInputChange}
-                      placeholder="Enter unit price"
-                      required
-                    />
+                          <div className="space-y-2 md:col-span-2">
+                            <Label>Project</Label>
+                            <Input
+                              type="text"
+                              value={line.project}
+                              onChange={(e) =>
+                                updateLine(idx, { project: e.target.value })
+                              }
+                              placeholder="Enter project name"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="mt-3 flex justify-end text-sm">
+                  <div className="text-muted-foreground">
+                    Grand total:{" "}
+                    <span className="font-semibold text-foreground text-base">
+                      {formatCurrency(grandTotal)}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -703,9 +824,9 @@ const OrderForm = ({
                 <div className="[&_.ql-toolbar]:rounded-t-md [&_.ql-container]:rounded-b-md [&_.ql-toolbar]:border-border [&_.ql-container]:border-border [&_.ql-editor]:min-h-[100px]">
                   <ReactQuill
                     theme="snow"
-                    value={formData.notes}
+                    value={header.notes}
                     onChange={(value) =>
-                      setFormData((prev) => ({ ...prev, notes: value }))
+                      setHeader((h) => ({ ...h, notes: value }))
                     }
                     placeholder="Enter order notes"
                     modules={{
