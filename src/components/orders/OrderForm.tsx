@@ -130,6 +130,7 @@ const OrderForm = ({
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [regionOpenIdx, setRegionOpenIdx] = useState<number | null>(null);
+  const [vesselOpenIdx, setVesselOpenIdx] = useState<number | null>(null);
 
   const isEditing = !!order && !!order.id;
 
@@ -624,33 +625,78 @@ const OrderForm = ({
                             <Label>
                               Vessel <span className="text-destructive">*</span>
                             </Label>
-                            <Select
-                              value={line.vesselId}
-                              onValueChange={(val) =>
-                                updateLine(idx, { vesselId: val })
+                            <Popover
+                              open={vesselOpenIdx === idx}
+                              onOpenChange={(open) =>
+                                setVesselOpenIdx(open ? idx : null)
                               }
-                              disabled={loadingVessels}
                             >
-                              <SelectTrigger>
-                                <SelectValue
-                                  placeholder={
-                                    loadingVessels
+                              <PopoverTrigger asChild>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  role="combobox"
+                                  disabled={loadingVessels}
+                                  className="w-full justify-between font-normal"
+                                >
+                                  <span className="truncate">
+                                    {loadingVessels
                                       ? "Loading..."
-                                      : "Select vessel"
-                                  }
-                                />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {vessels.map((vessel) => (
-                                  <SelectItem
-                                    key={vessel.id}
-                                    value={vessel.id.toString()}
-                                  >
-                                    {vessel.type_name} - {vessel.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                                      : line.vesselId
+                                        ? (() => {
+                                            const v = vessels.find(
+                                              (v) =>
+                                                v.id.toString() ===
+                                                line.vesselId,
+                                            );
+                                            return v
+                                              ? `${v.type_name} - ${v.name}`
+                                              : "Select vessel";
+                                          })()
+                                        : "Select vessel"}
+                                  </span>
+                                  <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                <Command>
+                                  <CommandInput placeholder="Search vessel..." />
+                                  <CommandList className="max-h-[300px] overflow-y-auto">
+                                    <CommandEmpty>
+                                      No vessel found.
+                                    </CommandEmpty>
+                                    <CommandGroup>
+                                      {vessels.map((vessel) => (
+                                        <CommandItem
+                                          key={vessel.id}
+                                          value={`${vessel.type_name} ${vessel.name}`}
+                                          onSelect={() => {
+                                            updateLine(idx, {
+                                              vesselId:
+                                                line.vesselId ===
+                                                vessel.id.toString()
+                                                  ? ""
+                                                  : vessel.id.toString(),
+                                            });
+                                            setVesselOpenIdx(null);
+                                          }}
+                                        >
+                                          <Check
+                                            className={`mr-2 h-4 w-4 ${
+                                              line.vesselId ===
+                                              vessel.id.toString()
+                                                ? "opacity-100"
+                                                : "opacity-0"
+                                            }`}
+                                          />
+                                          {vessel.type_name} - {vessel.name}
+                                        </CommandItem>
+                                      ))}
+                                    </CommandGroup>
+                                  </CommandList>
+                                </Command>
+                              </PopoverContent>
+                            </Popover>
                           </div>
 
                           <div className="space-y-2">
