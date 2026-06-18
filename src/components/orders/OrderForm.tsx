@@ -6,6 +6,8 @@ import {
   type Company,
   type Partner,
   type Product,
+  type CodeBudget,
+  type User,
 } from "@/services/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -61,6 +63,8 @@ interface LineFormData {
   quantity: string;
   unitPrice: string;
   project: string;
+  requestedById: string;
+  priority: string;
   // auto-populated from product
   categoryId: string;
   codeBudgetId: string;
@@ -89,6 +93,8 @@ const emptyLine: LineFormData = {
   quantity: "",
   unitPrice: "",
   project: "",
+  requestedById: "",
+  priority: "",
   categoryId: "",
   codeBudgetId: "",
   uomId: "",
@@ -122,15 +128,25 @@ const OrderForm = ({
   const [companies, setCompanies] = useState<Company[]>([]);
   const [partners, setPartners] = useState<Partner[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingVessels, setLoadingVessels] = useState(true);
   const [loadingRegions, setLoadingRegions] = useState(true);
   const [loadingCompanies, setLoadingCompanies] = useState(true);
   const [loadingPartners, setLoadingPartners] = useState(true);
   const [loadingProducts, setLoadingProducts] = useState(true);
+  const [loadingUsers, setLoadingUsers] = useState(true);
+  const [codeBudgets, setCodeBudgets] = useState<CodeBudget[]>([]);
+  const [loadingCodeBudgets, setLoadingCodeBudgets] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [regionOpenIdx, setRegionOpenIdx] = useState<number | null>(null);
   const [vesselOpenIdx, setVesselOpenIdx] = useState<number | null>(null);
+  const [codeBudgetOpenIdx, setCodeBudgetOpenIdx] = useState<number | null>(
+    null,
+  );
+  const [requestedByOpenIdx, setRequestedByOpenIdx] = useState<number | null>(
+    null,
+  );
 
   const isEditing = !!order && !!order.id;
 
@@ -141,6 +157,8 @@ const OrderForm = ({
       fetchCompanies();
       fetchPartners();
       fetchProducts();
+      fetchCodeBudgets();
+      fetchUsers();
     }
   }, [isOpen]);
 
@@ -175,6 +193,8 @@ const OrderForm = ({
           quantity: l.product_qty?.toString() || "",
           unitPrice: l.price_unit?.toString() || "",
           project: l.project_name || "",
+          requestedById: l.requested_by ? l.requested_by.toString() : "",
+          priority: typeof l.priority === "string" ? l.priority : "",
           categoryId: l.divisi_id?.toString() || "",
           codeBudgetId: l.code_budget_id ? l.code_budget_id.toString() : "",
           uomId: l.product_uom?.toString() || "",
@@ -246,6 +266,30 @@ const OrderForm = ({
       setError(err instanceof Error ? err.message : "Failed to fetch products");
     } finally {
       setLoadingProducts(false);
+    }
+  };
+
+  const fetchCodeBudgets = async () => {
+    try {
+      setLoadingCodeBudgets(true);
+      const response = await ordersApi.getCodeBudgets();
+      setCodeBudgets(response.code_budgets || []);
+    } catch (err) {
+      console.error("Error fetching code budgets:", err);
+    } finally {
+      setLoadingCodeBudgets(false);
+    }
+  };
+
+  const fetchUsers = async () => {
+    try {
+      setLoadingUsers(true);
+      const response = await ordersApi.getUsers();
+      setUsers(response.users || []);
+    } catch (err) {
+      console.error("Error fetching users:", err);
+    } finally {
+      setLoadingUsers(false);
     }
   };
 
@@ -337,6 +381,10 @@ const OrderForm = ({
         code_budget_id: l.codeBudgetId ? parseInt(l.codeBudgetId) : null,
         uom_id: parseInt(l.uomId),
         project: l.project,
+        ...(isEditing && l.requestedById
+          ? { requested_by: parseInt(l.requestedById) }
+          : {}),
+        ...(isEditing && l.priority ? { priority: l.priority } : {}),
       }));
 
       const orderData = {
@@ -791,12 +839,73 @@ const OrderForm = ({
 
                           <div className="space-y-2">
                             <Label>Code Budget</Label>
-                            <Input
-                              value={selectedProduct?.code_budget_name || "N/A"}
-                              readOnly
-                              placeholder="Auto-populated"
-                              className="bg-muted"
-                            />
+                            <Popover
+                              open={codeBudgetOpenIdx === idx}
+                              onOpenChange={(open) =>
+                                setCodeBudgetOpenIdx(open ? idx : null)
+                              }
+                            >
+                              <PopoverTrigger asChild>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  role="combobox"
+                                  disabled={loadingCodeBudgets}
+                                  className="w-full justify-between font-normal"
+                                >
+                                  <span className="truncate">
+                                    {loadingCodeBudgets
+                                      ? "Loading..."
+                                      : line.codeBudgetId
+                                        ? (codeBudgets.find(
+                                            (cb) =>
+                                              cb.id.toString() ===
+                                              line.codeBudgetId,
+                                          )?.name ?? "Select code budget")
+                                        : "Select code budget"}
+                                  </span>
+                                  <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                <Command>
+                                  <CommandInput placeholder="Search code budget..." />
+                                  <CommandList className="max-h-[300px] overflow-y-auto">
+                                    <CommandEmpty>
+                                      No code budget found.
+                                    </CommandEmpty>
+                                    <CommandGroup>
+                                      {codeBudgets.map((cb) => (
+                                        <CommandItem
+                                          key={cb.id}
+                                          value={cb.name}
+                                          onSelect={() => {
+                                            updateLine(idx, {
+                                              codeBudgetId:
+                                                line.codeBudgetId ===
+                                                cb.id.toString()
+                                                  ? ""
+                                                  : cb.id.toString(),
+                                            });
+                                            setCodeBudgetOpenIdx(null);
+                                          }}
+                                        >
+                                          <Check
+                                            className={`mr-2 h-4 w-4 ${
+                                              line.codeBudgetId ===
+                                              cb.id.toString()
+                                                ? "opacity-100"
+                                                : "opacity-0"
+                                            }`}
+                                          />
+                                          {cb.name}
+                                        </CommandItem>
+                                      ))}
+                                    </CommandGroup>
+                                  </CommandList>
+                                </Command>
+                              </PopoverContent>
+                            </Popover>
                           </div>
 
                           <div className="space-y-2">
@@ -833,7 +942,28 @@ const OrderForm = ({
                             />
                           </div>
 
-                          <div className="space-y-2 md:col-span-2">
+                          <div className="space-y-2">
+                            <Label>Priority</Label>
+                            <Select
+                              value={line.priority}
+                              onValueChange={(val) =>
+                                updateLine(idx, { priority: val })
+                              }
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select priority" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="low">L — Low</SelectItem>
+                                <SelectItem value="medium">
+                                  M — Medium
+                                </SelectItem>
+                                <SelectItem value="high">H — High</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <div className="space-y-2">
                             <Label>Project</Label>
                             <Input
                               type="text"
@@ -843,6 +973,77 @@ const OrderForm = ({
                               }
                               placeholder="Enter project name"
                             />
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label>Requested By</Label>
+                            <Popover
+                              open={requestedByOpenIdx === idx}
+                              onOpenChange={(open) =>
+                                setRequestedByOpenIdx(open ? idx : null)
+                              }
+                            >
+                              <PopoverTrigger asChild>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  role="combobox"
+                                  disabled={loadingUsers}
+                                  className="w-full justify-between font-normal"
+                                >
+                                  <span className="truncate">
+                                    {loadingUsers
+                                      ? "Loading..."
+                                      : line.requestedById
+                                        ? (users.find(
+                                            (u) =>
+                                              u.id.toString() ===
+                                              line.requestedById,
+                                          )?.name ?? "Select person")
+                                        : "Select person"}
+                                  </span>
+                                  <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                <Command>
+                                  <CommandInput placeholder="Search person..." />
+                                  <CommandList className="max-h-[300px] overflow-y-auto">
+                                    <CommandEmpty>
+                                      No person found.
+                                    </CommandEmpty>
+                                    <CommandGroup>
+                                      {users.map((u) => (
+                                        <CommandItem
+                                          key={u.id}
+                                          value={u.name}
+                                          onSelect={() => {
+                                            updateLine(idx, {
+                                              requestedById:
+                                                line.requestedById ===
+                                                u.id.toString()
+                                                  ? ""
+                                                  : u.id.toString(),
+                                            });
+                                            setRequestedByOpenIdx(null);
+                                          }}
+                                        >
+                                          <Check
+                                            className={`mr-2 h-4 w-4 ${
+                                              line.requestedById ===
+                                              u.id.toString()
+                                                ? "opacity-100"
+                                                : "opacity-0"
+                                            }`}
+                                          />
+                                          {u.name}
+                                        </CommandItem>
+                                      ))}
+                                    </CommandGroup>
+                                  </CommandList>
+                                </Command>
+                              </PopoverContent>
+                            </Popover>
                           </div>
                         </div>
                       </div>

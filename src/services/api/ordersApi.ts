@@ -23,7 +23,7 @@ export interface OrderLine {
   divisi_name: string | null;
   code_budget_id: number | null;
   code_budget_name: string | null;
-  priority: boolean;
+  priority: string | null;
   description: boolean;
   remark: boolean;
   status_list: boolean;
@@ -233,6 +233,18 @@ export interface PartnersResponse {
   partners: Partner[];
 }
 
+export interface User {
+  id: number;
+  name: string;
+  login: string;
+  email: string | false;
+  active: boolean;
+}
+
+export interface UsersResponse {
+  users: User[];
+}
+
 export interface Product {
   id: number;
   name: string;
@@ -265,6 +277,17 @@ export interface ProductsResponse {
   products: Product[];
 }
 
+export interface CodeBudget {
+  id: number;
+  name: string;
+  code?: string;
+  active?: boolean;
+}
+
+export interface CodeBudgetsResponse {
+  code_budgets: CodeBudget[];
+}
+
 export interface CreateOrderRequest {
   company_id: number;
   partner_id: number;
@@ -283,6 +306,8 @@ export interface CreateOrderRequest {
     code_budget_id: number | null;
     uom_id: number;
     project: string;
+    requested_by?: number | null;
+    priority?: string | null;
   }[];
 }
 
@@ -305,6 +330,8 @@ export interface UpdateOrderRequest {
     code_budget_id: number | null;
     uom_id: number;
     project: string;
+    requested_by?: number | null;
+    priority?: string | null;
   }[];
 }
 
@@ -461,6 +488,52 @@ export const ordersApi = {
       }
       const errorText = await response.text();
       throw new Error(errorText || "Failed to fetch products");
+    }
+
+    return response.json();
+  },
+
+  getUsers: async (): Promise<UsersResponse> => {
+    const token = tokenManager.getToken();
+
+    if (!token) {
+      throw new Error("No access token found");
+    }
+
+    const response = await fetch(`${API_URL}/api/users`, {
+      method: "GET",
+      headers: getAuthHeaders(token),
+    });
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        throw new Error("Unauthorized. Please login again.");
+      }
+      const errorText = await response.text();
+      throw new Error(errorText || "Failed to fetch users");
+    }
+
+    return response.json();
+  },
+
+  getCodeBudgets: async (): Promise<CodeBudgetsResponse> => {
+    const token = tokenManager.getToken();
+
+    if (!token) {
+      throw new Error("No access token found");
+    }
+
+    const response = await fetch(`${API_URL}/api/code-budgets`, {
+      method: "GET",
+      headers: getAuthHeaders(token),
+    });
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        throw new Error("Unauthorized. Please login again.");
+      }
+      const errorText = await response.text();
+      throw new Error(errorText || "Failed to fetch code budgets");
     }
 
     return response.json();
