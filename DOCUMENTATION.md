@@ -94,6 +94,8 @@ API Layer (src/services/api/)
              ├── /api/shipping_vessels
              ├── /api/regions
              ├── /api/products
+             ├── /api/code-budgets
+             ├── /api/users
              └── /api/reports/...  (PDF / Excel)
 ```
 
@@ -213,17 +215,21 @@ The **Orders** page lists all purchase orders in a paginated table.
 
 Each order must have at least one line item. Click **"Add Line"** to add more rows.
 
-| Field           | Description                                 | Auto-filled             |
-| --------------- | ------------------------------------------- | ----------------------- |
-| **Product**     | Search and select a product by name or code | —                       |
-| **Vessel**      | The shipping vessel this item is for        | —                       |
-| **Region**      | Operational region (searchable)             | —                       |
-| **Quantity**    | Number of units                             | —                       |
-| **Unit Price**  | Price per unit (IDR)                        | From product list price |
-| **Project**     | Project name or reference                   | —                       |
-| **Category**    | Product division/category                   | ✓ from product          |
-| **Budget Code** | Budget allocation code                      | ✓ from product          |
-| **UoM**         | Unit of Measure                             | ✓ from product          |
+| Field            | Description                                      | Notes                                 |
+| ---------------- | ------------------------------------------------ | ------------------------------------- |
+| **Product**      | Searchable dropdown by name or code              | Auto-fills Category, UoM, Code Budget |
+| **Vessel**       | Searchable dropdown by type and name             | Required                              |
+| **Region**       | Searchable dropdown                              | Optional                              |
+| **Quantity**     | Number of units                                  | Required                              |
+| **Unit Price**   | Price per unit (IDR)                             | Required                              |
+| **Priority**     | Urgency level: `L` Low / `M` Medium / `H` High   | Optional (edit only)                  |
+| **Project**      | Project name or reference                        | Optional                              |
+| **Requested By** | System user who requested the item (searchable)  | Optional (edit only)                  |
+| **Category**     | Product division/category                        | Auto-filled from product              |
+| **Code Budget**  | Budget allocation code (searchable, overridable) | Auto-filled from product              |
+| **Unit**         | Unit of Measure                                  | Auto-filled from product              |
+
+> **Note:** Priority and Requested By can only be set when **editing** an existing order, not during initial creation. After creating an order, open it in Edit mode to fill these fields.
 
 - The **subtotal** per line and the **grand total** are calculated and displayed automatically.
 - To remove a line, click the **trash icon** on that row.
@@ -356,19 +362,21 @@ Two export formats are available per order from the **action buttons** in the ta
 
 ### Order Line
 
-| Field              | Type   | Description         |
-| ------------------ | ------ | ------------------- |
-| `product_name`     | string | Product name        |
-| `product_code`     | string | SKU / product code  |
-| `vessel_name`      | string | Target vessel       |
-| `region_name`      | string | Operational region  |
-| `product_qty`      | number | Quantity            |
-| `product_uom_name` | string | Unit of measure     |
-| `price_unit`       | number | Unit price (IDR)    |
-| `price_subtotal`   | number | Line subtotal (IDR) |
-| `project_name`     | string | Associated project  |
-| `divisi_name`      | string | Division/category   |
-| `code_budget_name` | string | Budget code         |
+| Field               | Type                                      | Description                 |
+| ------------------- | ----------------------------------------- | --------------------------- |
+| `product_name`      | string                                    | Product name                |
+| `product_code`      | string                                    | SKU / product code          |
+| `vessel_name`       | string                                    | Target vessel               |
+| `region_name`       | string                                    | Operational region          |
+| `product_qty`       | number                                    | Quantity                    |
+| `product_uom_name`  | string                                    | Unit of measure             |
+| `price_unit`        | number                                    | Unit price (IDR)            |
+| `price_subtotal`    | number                                    | Line subtotal (IDR)         |
+| `project_name`      | string                                    | Associated project          |
+| `divisi_name`       | string                                    | Division/category           |
+| `code_budget_name`  | string                                    | Budget code                 |
+| `requested_by_name` | string \| null                            | Name of the requesting user |
+| `priority`          | `"low"` \| `"medium"` \| `"high"` \| null | Line item priority          |
 
 ---
 
@@ -404,13 +412,15 @@ Authentication flow:
 
 ### Reference Data
 
-| Method | Endpoint                | Description                   |
-| ------ | ----------------------- | ----------------------------- |
-| `GET`  | `/api/companies`        | List companies                |
-| `GET`  | `/api/partners`         | List vendors/partners         |
-| `GET`  | `/api/shipping_vessels` | List vessels                  |
-| `GET`  | `/api/regions`          | List regions (auto-paginated) |
-| `GET`  | `/api/products`         | List products                 |
+| Method | Endpoint                | Description                                      |
+| ------ | ----------------------- | ------------------------------------------------ |
+| `GET`  | `/api/companies`        | List companies                                   |
+| `GET`  | `/api/partners`         | List vendors/partners                            |
+| `GET`  | `/api/shipping_vessels` | List vessels                                     |
+| `GET`  | `/api/regions`          | List regions (auto-paginated, all pages fetched) |
+| `GET`  | `/api/products`         | List products                                    |
+| `GET`  | `/api/code-budgets`     | List budget codes                                |
+| `GET`  | `/api/users`            | List system users (for Requested By field)       |
 
 ### Export
 
@@ -478,4 +488,4 @@ po-bunker/
 
 ---
 
-_Documentation generated for PO Bunker v0.0.0 — PT Barokah Gemilang Perkasa_
+_Documentation last updated 2026-06-18 — PO Bunker v0.0.0 — PT Barokah Gemilang Perkasa_
