@@ -163,6 +163,26 @@ export interface RegionsResponse {
   pagination?: RegionsPagination;
 }
 
+export interface CreateRegionRequest {
+  name: string;
+  code?: string | null;
+  description?: string | null;
+  active?: boolean;
+  level_region?: string | null;
+  bps_code?: number | null;
+  parent_id?: number | null;
+}
+
+export interface UpdateRegionRequest {
+  name?: string;
+  code?: string | null;
+  description?: string | null;
+  active?: boolean;
+  level_region?: string | null;
+  bps_code?: number | null;
+  parent_id?: number | null;
+}
+
 export interface Company {
   id: number;
   name: string;
@@ -796,6 +816,73 @@ export const ordersApi = {
         if (e instanceof Error && e.message !== "Failed to set order to draft")
           throw e;
         throw new Error(errorText || "Failed to set order to draft");
+      }
+    }
+
+    return response.json();
+  },
+
+  createRegion: async (
+    regionData: CreateRegionRequest,
+  ): Promise<Region> => {
+    const token = tokenManager.getToken();
+
+    if (!token) {
+      throw new Error("No access token found");
+    }
+
+    const response = await fetch(`${API_URL}/api/regions`, {
+      method: "POST",
+      headers: getAuthHeaders(token),
+      body: JSON.stringify(regionData),
+    });
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        throw new Error("Unauthorized. Please login again.");
+      }
+      const errorText = await response.text();
+      try {
+        const errorJson = JSON.parse(errorText);
+        throw new Error(errorJson.error || "Failed to create region");
+      } catch (e) {
+        if (e instanceof Error && e.message !== "Failed to create region")
+          throw e;
+        throw new Error(errorText || "Failed to create region");
+      }
+    }
+
+    return response.json();
+  },
+
+  updateRegion: async (
+    id: number,
+    regionData: UpdateRegionRequest,
+  ): Promise<Region> => {
+    const token = tokenManager.getToken();
+
+    if (!token) {
+      throw new Error("No access token found");
+    }
+
+    const response = await fetch(`${API_URL}/api/regions/${id}`, {
+      method: "PUT",
+      headers: getAuthHeaders(token),
+      body: JSON.stringify(regionData),
+    });
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        throw new Error("Unauthorized. Please login again.");
+      }
+      const errorText = await response.text();
+      try {
+        const errorJson = JSON.parse(errorText);
+        throw new Error(errorJson.error || "Failed to update region");
+      } catch (e) {
+        if (e instanceof Error && e.message !== "Failed to update region")
+          throw e;
+        throw new Error(errorText || "Failed to update region");
       }
     }
 
