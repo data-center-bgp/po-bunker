@@ -4,11 +4,12 @@ import Sidebar, { type TabType } from "@/components/Sidebar";
 import OrdersPage from "@/components/orders/OrderPage";
 import VesselApiGate from "@/components/api/VesselApiGate";
 import RegionPage from "@/components/api/RegionPage";
+import PartnerPage from "@/components/api/PartnerPage";
 import { cn } from "@/lib/utils";
 import { Construction } from "lucide-react";
 
 const ACTIVE_TAB_STORAGE_KEY = "po-bunker:active-tab";
-const VALID_TABS: TabType[] = ["overview", "orders", "vessels", "regions"];
+const VALID_TABS: TabType[] = ["overview", "orders", "vessels", "regions", "partners"];
 
 const getInitialTab = (): TabType => {
   try {
@@ -61,6 +62,9 @@ const Dashboard = () => {
 
       case "regions":
         return <RegionPage />;
+
+      case "partners":
+        return <PartnerPage />;
 
       default:
         return null;

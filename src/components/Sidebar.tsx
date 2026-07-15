@@ -17,9 +17,10 @@ import {
   ChevronsRight,
   Ship,
   MapPin,
+  Building2,
 } from "lucide-react";
 
-export type TabType = "overview" | "orders" | "vessels" | "regions";
+export type TabType = "overview" | "orders" | "vessels" | "regions" | "partners";
 
 interface Tab {
   id: TabType;
@@ -64,6 +65,11 @@ const Sidebar = ({
       id: "regions",
       name: "Regions",
       icon: <MapPin className="h-5 w-5" />,
+    },
+    {
+      id: "partners",
+      name: "Vendor/Customer",
+      icon: <Building2 className="h-5 w-5" />,
     },
   ];
 

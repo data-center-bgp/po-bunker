@@ -249,9 +249,41 @@ export interface Partner {
   write_date: string;
 }
 
+export interface PartnersPagination {
+  page: number;
+  limit: number;
+  total_records: number;
+  total_pages: number;
+}
+
 export interface PartnersResponse {
   partners: Partner[];
+  pagination?: PartnersPagination;
 }
+
+export interface CreatePartnerRequest {
+  name: string;
+  type?: string;
+  is_company?: boolean;
+  email?: string;
+  phone?: string;
+  mobile?: string;
+  website?: string;
+  vat?: string;
+  street?: string;
+  street2?: string;
+  city?: string;
+  zip?: string;
+  country_id?: number;
+  state_id?: number;
+  vessel_id?: number;
+  parent_id?: number;
+  customer?: boolean;
+  supplier?: boolean;
+  active?: boolean;
+}
+
+export type UpdatePartnerRequest = CreatePartnerRequest;
 
 export interface User {
   id: number;
@@ -474,9 +506,48 @@ export const ordersApi = {
       throw new Error("No access token found");
     }
 
+    const fetchPage = async (page: number, limit: number) => {
+      const response = await fetch(
+        `${API_URL}/api/partners?page=${page}&limit=${limit}`,
+        {
+          method: "GET",
+          headers: getAuthHeaders(token),
+        },
+      );
+      if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error("Unauthorized. Please login again.");
+        }
+        const errorText = await response.text();
+        throw new Error(errorText || "Failed to fetch partners");
+      }
+      return response.json() as Promise<PartnersResponse>;
+    };
+
+    const limit = 200;
+    const first = await fetchPage(1, limit);
+    const all: Partner[] = [...(first.partners || [])];
+    const totalPages = first.pagination?.total_pages ?? 1;
+    for (let page = 2; page <= totalPages; page++) {
+      const next = await fetchPage(page, limit);
+      all.push(...(next.partners || []));
+    }
+    return { partners: all, pagination: first.pagination };
+  },
+
+  createPartner: async (
+    partnerData: CreatePartnerRequest,
+  ): Promise<Partner> => {
+    const token = tokenManager.getToken();
+
+    if (!token) {
+      throw new Error("No access token found");
+    }
+
     const response = await fetch(`${API_URL}/api/partners`, {
-      method: "GET",
+      method: "POST",
       headers: getAuthHeaders(token),
+      body: JSON.stringify(partnerData),
     });
 
     if (!response.ok) {
@@ -484,7 +555,48 @@ export const ordersApi = {
         throw new Error("Unauthorized. Please login again.");
       }
       const errorText = await response.text();
-      throw new Error(errorText || "Failed to fetch partners");
+      try {
+        const errorJson = JSON.parse(errorText);
+        throw new Error(errorJson.error || "Failed to create partner");
+      } catch (e) {
+        if (e instanceof Error && e.message !== "Failed to create partner")
+          throw e;
+        throw new Error(errorText || "Failed to create partner");
+      }
+    }
+
+    return response.json();
+  },
+
+  updatePartner: async (
+    id: number,
+    partnerData: UpdatePartnerRequest,
+  ): Promise<Partner> => {
+    const token = tokenManager.getToken();
+
+    if (!token) {
+      throw new Error("No access token found");
+    }
+
+    const response = await fetch(`${API_URL}/api/partners/${id}`, {
+      method: "PUT",
+      headers: getAuthHeaders(token),
+      body: JSON.stringify(partnerData),
+    });
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        throw new Error("Unauthorized. Please login again.");
+      }
+      const errorText = await response.text();
+      try {
+        const errorJson = JSON.parse(errorText);
+        throw new Error(errorJson.error || "Failed to update partner");
+      } catch (e) {
+        if (e instanceof Error && e.message !== "Failed to update partner")
+          throw e;
+        throw new Error(errorText || "Failed to update partner");
+      }
     }
 
     return response.json();
