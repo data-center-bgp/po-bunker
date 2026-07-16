@@ -635,6 +635,7 @@ const OrderForm = ({
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {/* Row 1 */}
                           <div className="space-y-2">
                             <Label>
                               Product{" "}
@@ -669,6 +670,78 @@ const OrderForm = ({
                             </Select>
                           </div>
 
+                          <div className="space-y-2">
+                            <Label>Requested By</Label>
+                            <Popover
+                              open={requestedByOpenIdx === idx}
+                              onOpenChange={(open) =>
+                                setRequestedByOpenIdx(open ? idx : null)
+                              }
+                            >
+                              <PopoverTrigger asChild>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  role="combobox"
+                                  disabled={loadingUsers}
+                                  className="w-full justify-between font-normal"
+                                >
+                                  <span className="truncate">
+                                    {loadingUsers
+                                      ? "Loading..."
+                                      : line.requestedById
+                                        ? (users.find(
+                                            (u) =>
+                                              u.id.toString() ===
+                                              line.requestedById,
+                                          )?.name ?? "Select person")
+                                        : "Select person"}
+                                  </span>
+                                  <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                <Command>
+                                  <CommandInput placeholder="Search person..." />
+                                  <CommandList className="max-h-[300px] overflow-y-auto">
+                                    <CommandEmpty>
+                                      No person found.
+                                    </CommandEmpty>
+                                    <CommandGroup>
+                                      {users.map((u) => (
+                                        <CommandItem
+                                          key={u.id}
+                                          value={u.name}
+                                          onSelect={() => {
+                                            updateLine(idx, {
+                                              requestedById:
+                                                line.requestedById ===
+                                                u.id.toString()
+                                                  ? ""
+                                                  : u.id.toString(),
+                                            });
+                                            setRequestedByOpenIdx(null);
+                                          }}
+                                        >
+                                          <Check
+                                            className={`mr-2 h-4 w-4 ${
+                                              line.requestedById ===
+                                              u.id.toString()
+                                                ? "opacity-100"
+                                                : "opacity-0"
+                                            }`}
+                                          />
+                                          {u.name}
+                                        </CommandItem>
+                                      ))}
+                                    </CommandGroup>
+                                  </CommandList>
+                                </Command>
+                              </PopoverContent>
+                            </Popover>
+                          </div>
+
+                          {/* Row 2 */}
                           <div className="space-y-2">
                             <Label>
                               Vessel <span className="text-destructive">*</span>
@@ -817,23 +890,16 @@ const OrderForm = ({
                             </Popover>
                           </div>
 
+                          {/* Row 3 */}
                           <div className="space-y-2">
-                            <Label>Category</Label>
+                            <Label>Project</Label>
                             <Input
-                              value={selectedProduct?.categ_name || ""}
-                              readOnly
-                              placeholder="Auto-populated"
-                              className="bg-muted"
-                            />
-                          </div>
-
-                          <div className="space-y-2">
-                            <Label>Unit</Label>
-                            <Input
-                              value={selectedProduct?.uom_name || ""}
-                              readOnly
-                              placeholder="Auto-populated"
-                              className="bg-muted"
+                              type="text"
+                              value={line.project}
+                              onChange={(e) =>
+                                updateLine(idx, { project: e.target.value })
+                              }
+                              placeholder="Enter project name"
                             />
                           </div>
 
@@ -908,40 +974,7 @@ const OrderForm = ({
                             </Popover>
                           </div>
 
-                          <div className="space-y-2">
-                            <Label>
-                              Quantity{" "}
-                              <span className="text-destructive">*</span>
-                            </Label>
-                            <Input
-                              type="number"
-                              step="0.01"
-                              value={line.quantity}
-                              onChange={(e) =>
-                                updateLine(idx, { quantity: e.target.value })
-                              }
-                              placeholder="Enter quantity"
-                              required
-                            />
-                          </div>
-
-                          <div className="space-y-2">
-                            <Label>
-                              Unit Price{" "}
-                              <span className="text-destructive">*</span>
-                            </Label>
-                            <Input
-                              type="number"
-                              step="0.01"
-                              value={line.unitPrice}
-                              onChange={(e) =>
-                                updateLine(idx, { unitPrice: e.target.value })
-                              }
-                              placeholder="Enter unit price"
-                              required
-                            />
-                          </div>
-
+                          {/* Row 4 */}
                           <div className="space-y-2">
                             <Label>Priority</Label>
                             <Select
@@ -964,86 +997,48 @@ const OrderForm = ({
                           </div>
 
                           <div className="space-y-2">
-                            <Label>Project</Label>
+                            <Label>
+                              Volume / Quantity{" "}
+                              <span className="text-destructive">*</span>
+                            </Label>
                             <Input
-                              type="text"
-                              value={line.project}
+                              type="number"
+                              step="0.01"
+                              value={line.quantity}
                               onChange={(e) =>
-                                updateLine(idx, { project: e.target.value })
+                                updateLine(idx, { quantity: e.target.value })
                               }
-                              placeholder="Enter project name"
+                              placeholder="Enter quantity"
+                              required
+                            />
+                          </div>
+
+                          {/* Row 5 */}
+                          <div className="space-y-2">
+                            <Label>Unit of Measure</Label>
+                            <Input
+                              value={selectedProduct?.uom_name || ""}
+                              readOnly
+                              placeholder="Auto-populated"
+                              className="bg-muted"
                             />
                           </div>
 
                           <div className="space-y-2">
-                            <Label>Requested By</Label>
-                            <Popover
-                              open={requestedByOpenIdx === idx}
-                              onOpenChange={(open) =>
-                                setRequestedByOpenIdx(open ? idx : null)
+                            <Label>
+                              Price{" "}
+                              <span className="text-destructive">*</span>
+                            </Label>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              value={line.unitPrice}
+                              onChange={(e) =>
+                                updateLine(idx, { unitPrice: e.target.value })
                               }
-                            >
-                              <PopoverTrigger asChild>
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  role="combobox"
-                                  disabled={loadingUsers}
-                                  className="w-full justify-between font-normal"
-                                >
-                                  <span className="truncate">
-                                    {loadingUsers
-                                      ? "Loading..."
-                                      : line.requestedById
-                                        ? (users.find(
-                                            (u) =>
-                                              u.id.toString() ===
-                                              line.requestedById,
-                                          )?.name ?? "Select person")
-                                        : "Select person"}
-                                  </span>
-                                  <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                </Button>
-                              </PopoverTrigger>
-                              <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                                <Command>
-                                  <CommandInput placeholder="Search person..." />
-                                  <CommandList className="max-h-[300px] overflow-y-auto">
-                                    <CommandEmpty>
-                                      No person found.
-                                    </CommandEmpty>
-                                    <CommandGroup>
-                                      {users.map((u) => (
-                                        <CommandItem
-                                          key={u.id}
-                                          value={u.name}
-                                          onSelect={() => {
-                                            updateLine(idx, {
-                                              requestedById:
-                                                line.requestedById ===
-                                                u.id.toString()
-                                                  ? ""
-                                                  : u.id.toString(),
-                                            });
-                                            setRequestedByOpenIdx(null);
-                                          }}
-                                        >
-                                          <Check
-                                            className={`mr-2 h-4 w-4 ${
-                                              line.requestedById ===
-                                              u.id.toString()
-                                                ? "opacity-100"
-                                                : "opacity-0"
-                                            }`}
-                                          />
-                                          {u.name}
-                                        </CommandItem>
-                                      ))}
-                                    </CommandGroup>
-                                  </CommandList>
-                                </Command>
-                              </PopoverContent>
-                            </Popover>
+                              placeholder="Enter unit price"
+                              required
+                            />
                           </div>
                         </div>
                       </div>
