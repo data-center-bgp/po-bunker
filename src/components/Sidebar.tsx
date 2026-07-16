@@ -18,9 +18,16 @@ import {
   Ship,
   MapPin,
   Building2,
+  Building,
 } from "lucide-react";
 
-export type TabType = "overview" | "orders" | "vessels" | "regions" | "partners";
+export type TabType =
+  | "overview"
+  | "orders"
+  | "vessels"
+  | "regions"
+  | "partners"
+  | "companies";
 
 interface Tab {
   id: TabType;
@@ -70,6 +77,11 @@ const Sidebar = ({
       id: "partners",
       name: "Vendor/Customer",
       icon: <Building2 className="h-5 w-5" />,
+    },
+    {
+      id: "companies",
+      name: "Companies",
+      icon: <Building className="h-5 w-5" />,
     },
   ];
 

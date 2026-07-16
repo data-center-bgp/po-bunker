@@ -214,9 +214,39 @@ export interface Company {
   write_date: string;
 }
 
+export interface CompaniesPagination {
+  page: number;
+  limit: number;
+  total_records: number;
+  total_pages: number;
+}
+
 export interface CompaniesResponse {
   companies: Company[];
+  pagination?: CompaniesPagination;
 }
+
+export interface CreateCompanyRequest {
+  name: string;
+  code_company?: string;
+  code_company_general?: string;
+  active?: boolean;
+  email?: string;
+  phone?: string;
+  website?: string;
+  vat?: string;
+  street?: string;
+  street2?: string;
+  city?: string;
+  zip?: string;
+  country_id?: number;
+  state_id?: number;
+  region_id?: number;
+  currency_id?: number;
+  bussines_unit_id?: number;
+}
+
+export type UpdateCompanyRequest = CreateCompanyRequest;
 
 export interface Partner {
   id: number;
@@ -483,9 +513,48 @@ export const ordersApi = {
       throw new Error("No access token found");
     }
 
+    const fetchPage = async (page: number, limit: number) => {
+      const response = await fetch(
+        `${API_URL}/api/companies?page=${page}&limit=${limit}`,
+        {
+          method: "GET",
+          headers: getAuthHeaders(token),
+        },
+      );
+      if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error("Unauthorized. Please login again.");
+        }
+        const errorText = await response.text();
+        throw new Error(errorText || "Failed to fetch companies");
+      }
+      return response.json() as Promise<CompaniesResponse>;
+    };
+
+    const limit = 200;
+    const first = await fetchPage(1, limit);
+    const all: Company[] = [...(first.companies || [])];
+    const totalPages = first.pagination?.total_pages ?? 1;
+    for (let page = 2; page <= totalPages; page++) {
+      const next = await fetchPage(page, limit);
+      all.push(...(next.companies || []));
+    }
+    return { companies: all, pagination: first.pagination };
+  },
+
+  createCompany: async (
+    companyData: CreateCompanyRequest,
+  ): Promise<Company> => {
+    const token = tokenManager.getToken();
+
+    if (!token) {
+      throw new Error("No access token found");
+    }
+
     const response = await fetch(`${API_URL}/api/companies`, {
-      method: "GET",
+      method: "POST",
       headers: getAuthHeaders(token),
+      body: JSON.stringify(companyData),
     });
 
     if (!response.ok) {
@@ -493,7 +562,48 @@ export const ordersApi = {
         throw new Error("Unauthorized. Please login again.");
       }
       const errorText = await response.text();
-      throw new Error(errorText || "Failed to fetch companies");
+      try {
+        const errorJson = JSON.parse(errorText);
+        throw new Error(errorJson.error || "Failed to create company");
+      } catch (e) {
+        if (e instanceof Error && e.message !== "Failed to create company")
+          throw e;
+        throw new Error(errorText || "Failed to create company");
+      }
+    }
+
+    return response.json();
+  },
+
+  updateCompany: async (
+    id: number,
+    companyData: UpdateCompanyRequest,
+  ): Promise<Company> => {
+    const token = tokenManager.getToken();
+
+    if (!token) {
+      throw new Error("No access token found");
+    }
+
+    const response = await fetch(`${API_URL}/api/companies/${id}`, {
+      method: "PUT",
+      headers: getAuthHeaders(token),
+      body: JSON.stringify(companyData),
+    });
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        throw new Error("Unauthorized. Please login again.");
+      }
+      const errorText = await response.text();
+      try {
+        const errorJson = JSON.parse(errorText);
+        throw new Error(errorJson.error || "Failed to update company");
+      } catch (e) {
+        if (e instanceof Error && e.message !== "Failed to update company")
+          throw e;
+        throw new Error(errorText || "Failed to update company");
+      }
     }
 
     return response.json();
