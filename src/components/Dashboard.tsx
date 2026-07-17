@@ -6,8 +6,8 @@ import VesselApiGate from "@/components/api/VesselApiGate";
 import RegionPage from "@/components/api/RegionPage";
 import PartnerPage from "@/components/api/PartnerPage";
 import CompanyPage from "@/components/api/CompanyPage";
+import OverviewPage from "@/components/overview/OverviewPage";
 import { cn } from "@/lib/utils";
-import { Construction } from "lucide-react";
 
 const ACTIVE_TAB_STORAGE_KEY = "po-bunker:active-tab";
 const VALID_TABS: TabType[] = ["overview", "orders", "vessels", "regions", "partners", "companies"];
@@ -44,16 +44,7 @@ const Dashboard = () => {
   const renderContent = () => {
     switch (activeTab) {
       case "overview":
-        return (
-          <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-center">
-            <Construction className="h-16 w-16 text-muted-foreground" />
-            <h2 className="text-2xl font-bold tracking-tight">Coming Soon</h2>
-            <p className="text-muted-foreground max-w-sm">
-              The overview dashboard with charts and statistics is currently
-              under construction.
-            </p>
-          </div>
-        );
+        return <OverviewPage />;
 
       case "orders":
         return <OrdersPage />;

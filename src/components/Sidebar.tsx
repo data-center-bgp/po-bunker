@@ -55,7 +55,7 @@ const Sidebar = ({
   const tabs: Tab[] = [
     {
       id: "overview",
-      name: "Overview",
+      name: "Dashboard",
       icon: <LayoutDashboard className="h-5 w-5" />,
     },
     {
