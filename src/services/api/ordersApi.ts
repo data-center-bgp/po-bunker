@@ -1,5 +1,4 @@
-import { API_URL, getAuthHeaders } from "./config";
-import { tokenManager } from "./tokenManager";
+import { apiRequest, apiRequestBinary, apiRequestVoid } from "./apiClient";
 
 export interface OrderLine {
   id: number;
@@ -151,12 +150,14 @@ export interface Region {
   write_date?: string;
 }
 
-export interface RegionsPagination {
+export interface Pagination {
   page: number;
   limit: number;
   total_records: number;
   total_pages: number;
 }
+
+export type RegionsPagination = Pagination;
 
 export interface RegionsResponse {
   regions: Region[];
@@ -214,12 +215,7 @@ export interface Company {
   write_date: string;
 }
 
-export interface CompaniesPagination {
-  page: number;
-  limit: number;
-  total_records: number;
-  total_pages: number;
-}
+export type CompaniesPagination = Pagination;
 
 export interface CompaniesResponse {
   companies: Company[];
@@ -279,12 +275,7 @@ export interface Partner {
   write_date: string;
 }
 
-export interface PartnersPagination {
-  page: number;
-  limit: number;
-  total_records: number;
-  total_pages: number;
-}
+export type PartnersPagination = Pagination;
 
 export interface PartnersResponse {
   partners: Partner[];
@@ -417,697 +408,204 @@ export interface UpdateOrderRequest {
   }[];
 }
 
+const fetchAllPages = async <TResponse, TItem>(
+  path: string,
+  errorFallback: string,
+  getItems: (response: TResponse) => TItem[] | undefined,
+  getPagination: (response: TResponse) => Pagination | undefined,
+): Promise<{ items: TItem[]; pagination?: Pagination }> => {
+  const limit = 200;
+  const fetchPage = (page: number) =>
+    apiRequest<TResponse>(`${path}?page=${page}&limit=${limit}`, {
+      errorFallback,
+    });
+
+  const first = await fetchPage(1);
+  const items: TItem[] = [...(getItems(first) || [])];
+  const pagination = getPagination(first);
+  const totalPages = pagination?.total_pages ?? 1;
+
+  for (let page = 2; page <= totalPages; page++) {
+    const next = await fetchPage(page);
+    items.push(...(getItems(next) || []));
+  }
+
+  return { items, pagination };
+};
+
 export const ordersApi = {
-  getOrders: async (
+  getOrders: (
     page: number = 1,
     limit: number = 10,
-  ): Promise<PurchaseOrdersResponse> => {
-    const token = tokenManager.getToken();
-
-    if (!token) {
-      throw new Error("No access token found");
-    }
-
-    const response = await fetch(
-      `${API_URL}/api/purchase-orders?page=${page}&limit=${limit}`,
-      {
-        method: "GET",
-        headers: getAuthHeaders(token),
-      },
-    );
-
-    if (!response.ok) {
-      if (response.status === 401) {
-        throw new Error("Unauthorized. Please login again.");
-      }
-      const errorText = await response.text();
-      throw new Error(errorText || "Failed to fetch orders");
-    }
-
-    return response.json();
-  },
+  ): Promise<PurchaseOrdersResponse> =>
+    apiRequest(`/api/purchase-orders?page=${page}&limit=${limit}`, {
+      errorFallback: "Failed to fetch orders",
+    }),
 
   getRegions: async (): Promise<RegionsResponse> => {
-    const token = tokenManager.getToken();
-
-    if (!token) {
-      throw new Error("No access token found");
-    }
-
-    const fetchPage = async (page: number, limit: number) => {
-      const response = await fetch(
-        `${API_URL}/api/regions?page=${page}&limit=${limit}`,
-        {
-          method: "GET",
-          headers: getAuthHeaders(token),
-        },
-      );
-      if (!response.ok) {
-        if (response.status === 401) {
-          throw new Error("Unauthorized. Please login again.");
-        }
-        const errorText = await response.text();
-        throw new Error(errorText || "Failed to fetch regions");
-      }
-      return response.json() as Promise<RegionsResponse>;
-    };
-
-    const limit = 200;
-    const first = await fetchPage(1, limit);
-    const all: Region[] = [...(first.regions || [])];
-    const totalPages = first.pagination?.total_pages ?? 1;
-    for (let page = 2; page <= totalPages; page++) {
-      const next = await fetchPage(page, limit);
-      all.push(...(next.regions || []));
-    }
-    return { regions: all, pagination: first.pagination };
+    const { items, pagination } = await fetchAllPages<RegionsResponse, Region>(
+      "/api/regions",
+      "Failed to fetch regions",
+      (r) => r.regions,
+      (r) => r.pagination,
+    );
+    return { regions: items, pagination };
   },
 
-  getVessels: async (): Promise<VesselsResponse> => {
-    const token = tokenManager.getToken();
-
-    if (!token) {
-      throw new Error("No access token found");
-    }
-
-    const response = await fetch(`${API_URL}/api/shipping_vessels`, {
-      method: "GET",
-      headers: getAuthHeaders(token),
-    });
-
-    if (!response.ok) {
-      if (response.status === 401) {
-        throw new Error("Unauthorized. Please login again.");
-      }
-      const errorText = await response.text();
-      throw new Error(errorText || "Failed to fetch vessels");
-    }
-
-    return response.json();
-  },
+  getVessels: (): Promise<VesselsResponse> =>
+    apiRequest("/api/shipping_vessels", {
+      errorFallback: "Failed to fetch vessels",
+    }),
 
   getCompanies: async (): Promise<CompaniesResponse> => {
-    const token = tokenManager.getToken();
-
-    if (!token) {
-      throw new Error("No access token found");
-    }
-
-    const fetchPage = async (page: number, limit: number) => {
-      const response = await fetch(
-        `${API_URL}/api/companies?page=${page}&limit=${limit}`,
-        {
-          method: "GET",
-          headers: getAuthHeaders(token),
-        },
-      );
-      if (!response.ok) {
-        if (response.status === 401) {
-          throw new Error("Unauthorized. Please login again.");
-        }
-        const errorText = await response.text();
-        throw new Error(errorText || "Failed to fetch companies");
-      }
-      return response.json() as Promise<CompaniesResponse>;
-    };
-
-    const limit = 200;
-    const first = await fetchPage(1, limit);
-    const all: Company[] = [...(first.companies || [])];
-    const totalPages = first.pagination?.total_pages ?? 1;
-    for (let page = 2; page <= totalPages; page++) {
-      const next = await fetchPage(page, limit);
-      all.push(...(next.companies || []));
-    }
-    return { companies: all, pagination: first.pagination };
+    const { items, pagination } = await fetchAllPages<
+      CompaniesResponse,
+      Company
+    >(
+      "/api/companies",
+      "Failed to fetch companies",
+      (r) => r.companies,
+      (r) => r.pagination,
+    );
+    return { companies: items, pagination };
   },
 
-  createCompany: async (
-    companyData: CreateCompanyRequest,
-  ): Promise<Company> => {
-    const token = tokenManager.getToken();
-
-    if (!token) {
-      throw new Error("No access token found");
-    }
-
-    const response = await fetch(`${API_URL}/api/companies`, {
+  createCompany: (companyData: CreateCompanyRequest): Promise<Company> =>
+    apiRequest("/api/companies", {
       method: "POST",
-      headers: getAuthHeaders(token),
       body: JSON.stringify(companyData),
-    });
+      errorFallback: "Failed to create company",
+    }),
 
-    if (!response.ok) {
-      if (response.status === 401) {
-        throw new Error("Unauthorized. Please login again.");
-      }
-      const errorText = await response.text();
-      try {
-        const errorJson = JSON.parse(errorText);
-        throw new Error(errorJson.error || "Failed to create company");
-      } catch (e) {
-        if (e instanceof Error && e.message !== "Failed to create company")
-          throw e;
-        throw new Error(errorText || "Failed to create company");
-      }
-    }
-
-    return response.json();
-  },
-
-  updateCompany: async (
+  updateCompany: (
     id: number,
     companyData: UpdateCompanyRequest,
-  ): Promise<Company> => {
-    const token = tokenManager.getToken();
-
-    if (!token) {
-      throw new Error("No access token found");
-    }
-
-    const response = await fetch(`${API_URL}/api/companies/${id}`, {
+  ): Promise<Company> =>
+    apiRequest(`/api/companies/${id}`, {
       method: "PUT",
-      headers: getAuthHeaders(token),
       body: JSON.stringify(companyData),
-    });
-
-    if (!response.ok) {
-      if (response.status === 401) {
-        throw new Error("Unauthorized. Please login again.");
-      }
-      const errorText = await response.text();
-      try {
-        const errorJson = JSON.parse(errorText);
-        throw new Error(errorJson.error || "Failed to update company");
-      } catch (e) {
-        if (e instanceof Error && e.message !== "Failed to update company")
-          throw e;
-        throw new Error(errorText || "Failed to update company");
-      }
-    }
-
-    return response.json();
-  },
+      errorFallback: "Failed to update company",
+    }),
 
   getPartners: async (): Promise<PartnersResponse> => {
-    const token = tokenManager.getToken();
-
-    if (!token) {
-      throw new Error("No access token found");
-    }
-
-    const fetchPage = async (page: number, limit: number) => {
-      const response = await fetch(
-        `${API_URL}/api/partners?page=${page}&limit=${limit}`,
-        {
-          method: "GET",
-          headers: getAuthHeaders(token),
-        },
-      );
-      if (!response.ok) {
-        if (response.status === 401) {
-          throw new Error("Unauthorized. Please login again.");
-        }
-        const errorText = await response.text();
-        throw new Error(errorText || "Failed to fetch partners");
-      }
-      return response.json() as Promise<PartnersResponse>;
-    };
-
-    const limit = 200;
-    const first = await fetchPage(1, limit);
-    const all: Partner[] = [...(first.partners || [])];
-    const totalPages = first.pagination?.total_pages ?? 1;
-    for (let page = 2; page <= totalPages; page++) {
-      const next = await fetchPage(page, limit);
-      all.push(...(next.partners || []));
-    }
-    return { partners: all, pagination: first.pagination };
+    const { items, pagination } = await fetchAllPages<
+      PartnersResponse,
+      Partner
+    >(
+      "/api/partners",
+      "Failed to fetch partners",
+      (r) => r.partners,
+      (r) => r.pagination,
+    );
+    return { partners: items, pagination };
   },
 
-  createPartner: async (
-    partnerData: CreatePartnerRequest,
-  ): Promise<Partner> => {
-    const token = tokenManager.getToken();
-
-    if (!token) {
-      throw new Error("No access token found");
-    }
-
-    const response = await fetch(`${API_URL}/api/partners`, {
+  createPartner: (partnerData: CreatePartnerRequest): Promise<Partner> =>
+    apiRequest("/api/partners", {
       method: "POST",
-      headers: getAuthHeaders(token),
       body: JSON.stringify(partnerData),
-    });
+      errorFallback: "Failed to create partner",
+    }),
 
-    if (!response.ok) {
-      if (response.status === 401) {
-        throw new Error("Unauthorized. Please login again.");
-      }
-      const errorText = await response.text();
-      try {
-        const errorJson = JSON.parse(errorText);
-        throw new Error(errorJson.error || "Failed to create partner");
-      } catch (e) {
-        if (e instanceof Error && e.message !== "Failed to create partner")
-          throw e;
-        throw new Error(errorText || "Failed to create partner");
-      }
-    }
-
-    return response.json();
-  },
-
-  updatePartner: async (
+  updatePartner: (
     id: number,
     partnerData: UpdatePartnerRequest,
-  ): Promise<Partner> => {
-    const token = tokenManager.getToken();
-
-    if (!token) {
-      throw new Error("No access token found");
-    }
-
-    const response = await fetch(`${API_URL}/api/partners/${id}`, {
+  ): Promise<Partner> =>
+    apiRequest(`/api/partners/${id}`, {
       method: "PUT",
-      headers: getAuthHeaders(token),
       body: JSON.stringify(partnerData),
-    });
+      errorFallback: "Failed to update partner",
+    }),
 
-    if (!response.ok) {
-      if (response.status === 401) {
-        throw new Error("Unauthorized. Please login again.");
-      }
-      const errorText = await response.text();
-      try {
-        const errorJson = JSON.parse(errorText);
-        throw new Error(errorJson.error || "Failed to update partner");
-      } catch (e) {
-        if (e instanceof Error && e.message !== "Failed to update partner")
-          throw e;
-        throw new Error(errorText || "Failed to update partner");
-      }
-    }
+  getProducts: (): Promise<ProductsResponse> =>
+    apiRequest("/api/products", { errorFallback: "Failed to fetch products" }),
 
-    return response.json();
-  },
+  getUsers: (): Promise<UsersResponse> =>
+    apiRequest("/api/users", { errorFallback: "Failed to fetch users" }),
 
-  getProducts: async (): Promise<ProductsResponse> => {
-    const token = tokenManager.getToken();
+  getCodeBudgets: (): Promise<CodeBudgetsResponse> =>
+    apiRequest("/api/code-budgets", {
+      errorFallback: "Failed to fetch code budgets",
+    }),
 
-    if (!token) {
-      throw new Error("No access token found");
-    }
-
-    const response = await fetch(`${API_URL}/api/products`, {
-      method: "GET",
-      headers: getAuthHeaders(token),
-    });
-
-    if (!response.ok) {
-      if (response.status === 401) {
-        throw new Error("Unauthorized. Please login again.");
-      }
-      const errorText = await response.text();
-      throw new Error(errorText || "Failed to fetch products");
-    }
-
-    return response.json();
-  },
-
-  getUsers: async (): Promise<UsersResponse> => {
-    const token = tokenManager.getToken();
-
-    if (!token) {
-      throw new Error("No access token found");
-    }
-
-    const response = await fetch(`${API_URL}/api/users`, {
-      method: "GET",
-      headers: getAuthHeaders(token),
-    });
-
-    if (!response.ok) {
-      if (response.status === 401) {
-        throw new Error("Unauthorized. Please login again.");
-      }
-      const errorText = await response.text();
-      throw new Error(errorText || "Failed to fetch users");
-    }
-
-    return response.json();
-  },
-
-  getCodeBudgets: async (): Promise<CodeBudgetsResponse> => {
-    const token = tokenManager.getToken();
-
-    if (!token) {
-      throw new Error("No access token found");
-    }
-
-    const response = await fetch(`${API_URL}/api/code-budgets`, {
-      method: "GET",
-      headers: getAuthHeaders(token),
-    });
-
-    if (!response.ok) {
-      if (response.status === 401) {
-        throw new Error("Unauthorized. Please login again.");
-      }
-      const errorText = await response.text();
-      throw new Error(errorText || "Failed to fetch code budgets");
-    }
-
-    return response.json();
-  },
-
-  createOrder: async (
-    orderData: CreateOrderRequest,
-  ): Promise<PurchaseOrder> => {
-    const token = tokenManager.getToken();
-
-    if (!token) {
-      throw new Error("No access token found");
-    }
-
-    const response = await fetch(`${API_URL}/api/purchase-orders`, {
+  createOrder: (orderData: CreateOrderRequest): Promise<PurchaseOrder> =>
+    apiRequest("/api/purchase-orders", {
       method: "POST",
-      headers: getAuthHeaders(token),
       body: JSON.stringify(orderData),
-    });
-
-    if (!response.ok) {
-      if (response.status === 401) {
-        throw new Error("Unauthorized. Please login again.");
-      }
-      const errorText = await response.text();
-      throw new Error(errorText || "Failed to create order");
-    }
-
-    return response.json();
-  },
+      errorFallback: "Failed to create order",
+    }),
 
   /**
    * Generate Excel for a purchase order by id.
    * Returns an ArrayBuffer of the XLSX file.
    */
-  generateExcel: async (id: number): Promise<ArrayBuffer> => {
-    const token = tokenManager.getToken();
-
-    if (!token) {
-      throw new Error("No access token found");
-    }
-
-    const response = await fetch(
-      `${API_URL}/api/purchase-orders/${id}/generate-excel`,
-      {
-        method: "GET",
-        headers: getAuthHeaders(token),
-      },
-    );
-
-    if (!response.ok) {
-      if (response.status === 401) {
-        throw new Error("Unauthorized. Please login again.");
-      }
-      const errorText = await response.text();
-      throw new Error(errorText || "Failed to generate excel");
-    }
-
-    return response.arrayBuffer();
-  },
+  generateExcel: (id: number): Promise<ArrayBuffer> =>
+    apiRequestBinary(`/api/purchase-orders/${id}/generate-excel`, {
+      errorFallback: "Failed to generate excel",
+    }),
 
   /**
    * Generate PDF for a purchase order by id.
    * Returns an ArrayBuffer of the PDF file.
    */
-  generatePdf: async (id: number): Promise<ArrayBuffer> => {
-    const token = tokenManager.getToken();
+  generatePdf: (id: number): Promise<ArrayBuffer> =>
+    apiRequestBinary(`/api/purchase-orders/${id}/generate-pdf`, {
+      errorFallback: "Failed to generate PDF",
+    }),
 
-    if (!token) {
-      throw new Error("No access token found");
-    }
-
-    const response = await fetch(
-      `${API_URL}/api/purchase-orders/${id}/generate-pdf`,
-      {
-        method: "GET",
-        headers: getAuthHeaders(token),
-      },
-    );
-
-    if (!response.ok) {
-      if (response.status === 401) {
-        throw new Error("Unauthorized. Please login again.");
-      }
-      const errorText = await response.text();
-      throw new Error(errorText || "Failed to generate PDF");
-    }
-
-    return response.arrayBuffer();
-  },
-
-  updateOrder: async (
+  updateOrder: (
     id: number,
     orderData: UpdateOrderRequest,
-  ): Promise<PurchaseOrder> => {
-    const token = tokenManager.getToken();
-
-    if (!token) {
-      throw new Error("No access token found");
-    }
-
-    const response = await fetch(`${API_URL}/api/purchase-orders/${id}`, {
+  ): Promise<PurchaseOrder> =>
+    apiRequest(`/api/purchase-orders/${id}`, {
       method: "PUT",
-      headers: getAuthHeaders(token),
       body: JSON.stringify(orderData),
-    });
+      errorFallback: "Failed to update order",
+    }),
 
-    if (!response.ok) {
-      if (response.status === 401) {
-        throw new Error("Unauthorized. Please login again.");
-      }
-      const errorText = await response.text();
-      throw new Error(errorText || "Failed to update order");
-    }
-
-    return response.json();
-  },
-
-  deleteOrder: async (id: number): Promise<void> => {
-    const token = tokenManager.getToken();
-
-    if (!token) {
-      throw new Error("No access token found");
-    }
-
-    const response = await fetch(`${API_URL}/api/purchase-orders/${id}`, {
+  deleteOrder: (id: number): Promise<void> =>
+    apiRequestVoid(`/api/purchase-orders/${id}`, {
       method: "DELETE",
-      headers: getAuthHeaders(token),
-    });
+      errorFallback: "Failed to delete order",
+    }),
 
-    if (!response.ok) {
-      if (response.status === 401) {
-        throw new Error("Unauthorized. Please login again.");
-      }
-      const errorText = await response.text();
-      try {
-        const errorJson = JSON.parse(errorText);
-        throw new Error(errorJson.error || "Failed to delete order");
-      } catch (e) {
-        if (e instanceof Error && e.message !== "Failed to delete order")
-          throw e;
-        throw new Error(errorText || "Failed to delete order");
-      }
-    }
-  },
-
-  cancelOrder: async (id: number): Promise<PurchaseOrder> => {
-    const token = tokenManager.getToken();
-
-    if (!token) {
-      throw new Error("No access token found");
-    }
-
-    const response = await fetch(
-      `${API_URL}/api/purchase-orders/${id}/cancel`,
-      {
-        method: "POST",
-        headers: getAuthHeaders(token),
-      },
-    );
-
-    if (!response.ok) {
-      if (response.status === 401) {
-        throw new Error("Unauthorized. Please login again.");
-      }
-      const errorText = await response.text();
-      try {
-        const errorJson = JSON.parse(errorText);
-        throw new Error(errorJson.error || "Failed to cancel order");
-      } catch (e) {
-        if (e instanceof Error && e.message !== "Failed to cancel order")
-          throw e;
-        throw new Error(errorText || "Failed to cancel order");
-      }
-    }
-
-    return response.json();
-  },
-
-  getOrderById: async (id: number): Promise<PurchaseOrder> => {
-    const token = tokenManager.getToken();
-
-    if (!token) {
-      throw new Error("No access token found");
-    }
-
-    const response = await fetch(`${API_URL}/api/purchase-orders/${id}`, {
-      method: "GET",
-      headers: getAuthHeaders(token),
-    });
-
-    if (!response.ok) {
-      if (response.status === 401) {
-        throw new Error("Unauthorized. Please login again.");
-      }
-      const errorText = await response.text();
-      throw new Error(errorText || "Failed to fetch order");
-    }
-
-    return response.json();
-  },
-
-  confirmOrder: async (id: number): Promise<PurchaseOrder> => {
-    const token = tokenManager.getToken();
-
-    if (!token) {
-      throw new Error("No access token found");
-    }
-
-    const response = await fetch(
-      `${API_URL}/api/purchase-orders/${id}/confirm`,
-      {
-        method: "POST",
-        headers: getAuthHeaders(token),
-      },
-    );
-
-    if (!response.ok) {
-      if (response.status === 401) {
-        throw new Error("Unauthorized. Please login again.");
-      }
-      const errorText = await response.text();
-      try {
-        const errorJson = JSON.parse(errorText);
-        throw new Error(errorJson.error || "Failed to confirm order");
-      } catch (e) {
-        if (e instanceof Error && e.message !== "Failed to confirm order")
-          throw e;
-        throw new Error(errorText || "Failed to confirm order");
-      }
-    }
-
-    return response.json();
-  },
-
-  draftOrder: async (id: number): Promise<PurchaseOrder> => {
-    const token = tokenManager.getToken();
-
-    if (!token) {
-      throw new Error("No access token found");
-    }
-
-    const response = await fetch(
-      `${API_URL}/api/purchase-orders/${id}/set-to-draft`,
-      {
-        method: "POST",
-        headers: getAuthHeaders(token),
-      },
-    );
-
-    if (!response.ok) {
-      if (response.status === 401) {
-        throw new Error("Unauthorized. Please login again.");
-      }
-      const errorText = await response.text();
-      try {
-        const errorJson = JSON.parse(errorText);
-        throw new Error(errorJson.error || "Failed to set order to draft");
-      } catch (e) {
-        if (e instanceof Error && e.message !== "Failed to set order to draft")
-          throw e;
-        throw new Error(errorText || "Failed to set order to draft");
-      }
-    }
-
-    return response.json();
-  },
-
-  createRegion: async (
-    regionData: CreateRegionRequest,
-  ): Promise<Region> => {
-    const token = tokenManager.getToken();
-
-    if (!token) {
-      throw new Error("No access token found");
-    }
-
-    const response = await fetch(`${API_URL}/api/regions`, {
+  cancelOrder: (id: number): Promise<PurchaseOrder> =>
+    apiRequest(`/api/purchase-orders/${id}/cancel`, {
       method: "POST",
-      headers: getAuthHeaders(token),
+      errorFallback: "Failed to cancel order",
+    }),
+
+  getOrderById: (id: number): Promise<PurchaseOrder> =>
+    apiRequest(`/api/purchase-orders/${id}`, {
+      errorFallback: "Failed to fetch order",
+    }),
+
+  confirmOrder: (id: number): Promise<PurchaseOrder> =>
+    apiRequest(`/api/purchase-orders/${id}/confirm`, {
+      method: "POST",
+      errorFallback: "Failed to confirm order",
+    }),
+
+  draftOrder: (id: number): Promise<PurchaseOrder> =>
+    apiRequest(`/api/purchase-orders/${id}/set-to-draft`, {
+      method: "POST",
+      errorFallback: "Failed to set order to draft",
+    }),
+
+  createRegion: (regionData: CreateRegionRequest): Promise<Region> =>
+    apiRequest("/api/regions", {
+      method: "POST",
       body: JSON.stringify(regionData),
-    });
+      errorFallback: "Failed to create region",
+    }),
 
-    if (!response.ok) {
-      if (response.status === 401) {
-        throw new Error("Unauthorized. Please login again.");
-      }
-      const errorText = await response.text();
-      try {
-        const errorJson = JSON.parse(errorText);
-        throw new Error(errorJson.error || "Failed to create region");
-      } catch (e) {
-        if (e instanceof Error && e.message !== "Failed to create region")
-          throw e;
-        throw new Error(errorText || "Failed to create region");
-      }
-    }
-
-    return response.json();
-  },
-
-  updateRegion: async (
+  updateRegion: (
     id: number,
     regionData: UpdateRegionRequest,
-  ): Promise<Region> => {
-    const token = tokenManager.getToken();
-
-    if (!token) {
-      throw new Error("No access token found");
-    }
-
-    const response = await fetch(`${API_URL}/api/regions/${id}`, {
+  ): Promise<Region> =>
+    apiRequest(`/api/regions/${id}`, {
       method: "PUT",
-      headers: getAuthHeaders(token),
       body: JSON.stringify(regionData),
-    });
-
-    if (!response.ok) {
-      if (response.status === 401) {
-        throw new Error("Unauthorized. Please login again.");
-      }
-      const errorText = await response.text();
-      try {
-        const errorJson = JSON.parse(errorText);
-        throw new Error(errorJson.error || "Failed to update region");
-      } catch (e) {
-        if (e instanceof Error && e.message !== "Failed to update region")
-          throw e;
-        throw new Error(errorText || "Failed to update region");
-      }
-    }
-
-    return response.json();
-  },
+      errorFallback: "Failed to update region",
+    }),
 };

@@ -1,5 +1,11 @@
-import { createContext, useState, useEffect, type ReactNode } from "react";
-import { tokenManager } from "@/services/api";
+import {
+  createContext,
+  useState,
+  useEffect,
+  useCallback,
+  type ReactNode,
+} from "react";
+import { tokenManager, UNAUTHORIZED_EVENT } from "@/services/api";
 
 interface User {
   userId: number;
@@ -43,11 +49,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUser({ userId, email });
   };
 
-  const logout = () => {
+  const logout = useCallback(() => {
     tokenManager.removeToken();
     tokenManager.clearUser();
     setUser(null);
-  };
+  }, []);
+
+  useEffect(() => {
+    window.addEventListener(UNAUTHORIZED_EVENT, logout);
+    return () => window.removeEventListener(UNAUTHORIZED_EVENT, logout);
+  }, [logout]);
 
   return (
     <AuthContext.Provider
