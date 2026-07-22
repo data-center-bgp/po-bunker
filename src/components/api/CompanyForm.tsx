@@ -25,6 +25,8 @@ import {
 } from "@/components/ui/select";
 import { AlertCircle, Loader2, Building } from "lucide-react";
 
+const NONE_VALUE = "__none__";
+
 interface CompanyFormProps {
   isOpen: boolean;
   onSuccess: () => void;
@@ -366,16 +368,19 @@ const CompanyForm = ({
                 <div className="space-y-2">
                   <Label htmlFor="company-region">Region</Label>
                   <Select
-                    value={formData.region_id}
+                    value={formData.region_id || NONE_VALUE}
                     onValueChange={(value) =>
-                      handleChange("region_id", value)
+                      handleChange(
+                        "region_id",
+                        value === NONE_VALUE ? "" : value,
+                      )
                     }
                   >
                     <SelectTrigger id="company-region" disabled={loading}>
                       <SelectValue placeholder="None" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">None</SelectItem>
+                      <SelectItem value={NONE_VALUE}>None</SelectItem>
                       {regions.map((r) => (
                         <SelectItem key={r.id} value={String(r.id)}>
                           {r.name}

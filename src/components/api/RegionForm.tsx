@@ -21,6 +21,8 @@ import {
 } from "@/components/ui/select";
 import { AlertCircle, Loader2, MapPin } from "lucide-react";
 
+const NONE_VALUE = "__none__";
+
 interface RegionFormProps {
   isOpen: boolean;
   onSuccess: () => void;
@@ -237,14 +239,16 @@ const RegionForm = ({
               <div className="space-y-2">
                 <Label htmlFor="region-parent">Parent Region</Label>
                 <Select
-                  value={formData.parent_id}
-                  onValueChange={(value) => handleChange("parent_id", value)}
+                  value={formData.parent_id || NONE_VALUE}
+                  onValueChange={(value) =>
+                    handleChange("parent_id", value === NONE_VALUE ? "" : value)
+                  }
                 >
                   <SelectTrigger id="region-parent" disabled={loading}>
                     <SelectValue placeholder="None" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value={NONE_VALUE}>None</SelectItem>
                     {parentOptions.map((r) => (
                       <SelectItem key={r.id} value={String(r.id)}>
                         {r.name}

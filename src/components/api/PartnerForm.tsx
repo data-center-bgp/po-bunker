@@ -25,6 +25,8 @@ import {
 } from "@/components/ui/select";
 import { AlertCircle, Loader2, Building2 } from "lucide-react";
 
+const NONE_VALUE = "__none__";
+
 interface PartnerFormProps {
   isOpen: boolean;
   onSuccess: () => void;
@@ -392,16 +394,19 @@ const PartnerForm = ({
                 <div className="space-y-2">
                   <Label htmlFor="partner-parent">Parent Company</Label>
                   <Select
-                    value={formData.parent_id}
+                    value={formData.parent_id || NONE_VALUE}
                     onValueChange={(value) =>
-                      handleChange("parent_id", value)
+                      handleChange(
+                        "parent_id",
+                        value === NONE_VALUE ? "" : value,
+                      )
                     }
                   >
                     <SelectTrigger id="partner-parent" disabled={loading}>
                       <SelectValue placeholder="None" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">None</SelectItem>
+                      <SelectItem value={NONE_VALUE}>None</SelectItem>
                       {parentOptions.map((p) => (
                         <SelectItem key={p.id} value={String(p.id)}>
                           {p.display_name || p.name}
@@ -414,16 +419,19 @@ const PartnerForm = ({
                 <div className="space-y-2">
                   <Label htmlFor="partner-vessel">Vessel</Label>
                   <Select
-                    value={formData.vessel_id}
+                    value={formData.vessel_id || NONE_VALUE}
                     onValueChange={(value) =>
-                      handleChange("vessel_id", value)
+                      handleChange(
+                        "vessel_id",
+                        value === NONE_VALUE ? "" : value,
+                      )
                     }
                   >
                     <SelectTrigger id="partner-vessel" disabled={loading}>
                       <SelectValue placeholder="None" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">None</SelectItem>
+                      <SelectItem value={NONE_VALUE}>None</SelectItem>
                       {vessels.map((v) => (
                         <SelectItem key={v.id} value={String(v.id)}>
                           {v.name}

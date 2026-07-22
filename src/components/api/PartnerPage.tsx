@@ -28,6 +28,7 @@ const PartnerPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
+  const [vendorOnly, setVendorOnly] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
 
   const [showForm, setShowForm] = useState(false);
@@ -55,11 +56,12 @@ const PartnerPage = () => {
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return partners;
-    return partners.filter((p) =>
-      p.display_name?.toLowerCase().includes(q),
-    );
-  }, [partners, query]);
+    return partners.filter((p) => {
+      if (vendorOnly && !(p.is_company && p.supplier_rank > 0)) return false;
+      if (q && !p.display_name?.toLowerCase().includes(q)) return false;
+      return true;
+    });
+  }, [partners, query, vendorOnly]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(currentPage, totalPages);
@@ -70,6 +72,11 @@ const PartnerPage = () => {
 
   const handleQueryChange = (value: string) => {
     setQuery(value);
+    setCurrentPage(1);
+  };
+
+  const handleVendorOnlyChange = (value: boolean) => {
+    setVendorOnly(value);
     setCurrentPage(1);
   };
 
@@ -115,16 +122,27 @@ const PartnerPage = () => {
         </Button>
       </div>
 
-      {/* Search */}
-      <div className="relative max-w-md">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          type="text"
-          placeholder="Search by partner name..."
-          value={query}
-          onChange={(e) => handleQueryChange(e.target.value)}
-          className="pl-9"
-        />
+      {/* Search + Filters */}
+      <div className="flex flex-wrap items-center gap-4">
+        <div className="relative max-w-md flex-1 min-w-[240px]">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            type="text"
+            placeholder="Search by partner name..."
+            value={query}
+            onChange={(e) => handleQueryChange(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        <label className="flex items-center gap-2 cursor-pointer text-sm">
+          <input
+            type="checkbox"
+            className="h-4 w-4 rounded border-input text-primary focus:ring-primary"
+            checked={vendorOnly}
+            onChange={(e) => handleVendorOnlyChange(e.target.checked)}
+          />
+          Vendor companies only
+        </label>
       </div>
 
       {/* Error */}

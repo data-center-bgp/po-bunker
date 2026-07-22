@@ -1,4 +1,4 @@
-import { useState, useEffect, type FormEvent } from "react";
+import { useState, useEffect, useMemo, type FormEvent } from "react";
 import {
   ordersApi,
   type Vessel,
@@ -149,6 +149,21 @@ const OrderForm = ({
   );
 
   const isEditing = !!order && !!order.id;
+
+  // Only company suppliers can be selected as the customer on a PO. If an
+  // existing order's partner no longer matches (e.g. legacy data), keep it
+  // selectable so editing doesn't silently blank out the current value.
+  const vendorPartners = useMemo(() => {
+    const filtered = partners.filter((p) => p.is_company && p.supplier_rank > 0);
+    if (
+      order?.partner_id != null &&
+      !filtered.some((p) => p.id === order.partner_id)
+    ) {
+      const current = partners.find((p) => p.id === order.partner_id);
+      if (current) return [current, ...filtered];
+    }
+    return filtered;
+  }, [partners, order]);
 
   useEffect(() => {
     if (isOpen) {
@@ -482,7 +497,7 @@ const OrderForm = ({
                         />
                       </SelectTrigger>
                       <SelectContent>
-                        {partners.map((partner) => (
+                        {vendorPartners.map((partner) => (
                           <SelectItem
                             key={partner.id}
                             value={partner.id.toString()}
