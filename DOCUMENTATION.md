@@ -449,7 +449,7 @@ Authentication flow:
 ```
 po-bunker/
 ├── public/
-│   └── pt-barokah-gemilang-perkasa.png   # Company logo
+│   └── logo-bpg.png                       # Company logo
 ├── src/
 │   ├── main.tsx                           # App entry point
 │   ├── App.tsx                            # Root: Login or Dashboard

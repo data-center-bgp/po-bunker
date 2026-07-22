@@ -139,14 +139,14 @@ const Login = () => {
 
         <div className="relative z-10 flex items-center gap-3">
           <img
-            src="/pt-barokah-gemilang-perkasa.png"
+            src="/logo-bpg.png"
             alt="Company Logo"
             className="h-11 w-11 object-contain drop-shadow-sm"
           />
           <div className="leading-tight">
             <p className="font-semibold tracking-tight">PO Bunker</p>
             <p className="text-xs text-primary-foreground/75">
-              PT Barokah Gemilang Perkasa
+              Barokah Perkasa Group
             </p>
           </div>
         </div>
@@ -180,7 +180,7 @@ const Login = () => {
         </div>
 
         <p className="relative z-10 text-xs text-primary-foreground/60">
-          &copy; {new Date().getFullYear()} PT Barokah Gemilang Perkasa. All
+          &copy; {new Date().getFullYear()} Barokah Perkasa Group. All
           rights reserved.
         </p>
       </div>
@@ -190,12 +190,12 @@ const Login = () => {
         <div className="mx-auto w-full max-w-sm">
           <div className="mb-8 flex flex-col items-center gap-3 lg:hidden">
             <img
-              src="/pt-barokah-gemilang-perkasa.png"
+              src="/logo-bpg.png"
               alt="Company Logo"
               className="h-14 w-14 object-contain"
             />
             <p className="text-sm font-medium text-muted-foreground">
-              PT Barokah Gemilang Perkasa
+              Barokah Perkasa Group
             </p>
           </div>
 

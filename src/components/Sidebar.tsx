@@ -149,7 +149,7 @@ const Sidebar = ({
             <div className="flex min-w-0 items-center gap-2.5 px-1">
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
                 <img
-                  src="/pt-barokah-gemilang-perkasa.png"
+                  src="/logo-bpg.png"
                   alt="Logo"
                   className="h-6 w-6 object-contain"
                 />
@@ -159,7 +159,7 @@ const Sidebar = ({
                   PO Bunker
                 </h1>
                 <p className="truncate text-[11px] text-muted-foreground">
-                  Barokah Gemilang Perkasa
+                  Barokah Perkasa Group
                 </p>
               </div>
             </div>
