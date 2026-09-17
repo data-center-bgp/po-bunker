@@ -301,7 +301,7 @@ const OverviewPage = () => {
             >
               <CartesianGrid
                 horizontal={false}
-                stroke="hsl(var(--border))"
+                stroke="var(--border)"
                 strokeDasharray="3 3"
               />
               <XAxis type="number" allowDecimals={false} tickLine={false} />
@@ -313,7 +313,7 @@ const OverviewPage = () => {
                 axisLine={false}
               />
               <Tooltip
-                cursor={{ fill: "hsl(var(--muted))" }}
+                cursor={{ fill: "var(--muted)" }}
                 formatter={(v) => [`${v} POs`, "Count"]}
               />
               <Bar dataKey="count" radius={[0, 4, 4, 0]}>
@@ -335,7 +335,7 @@ const OverviewPage = () => {
               margin={{ top: 4, right: 8, bottom: 4, left: 8 }}
             >
               <CartesianGrid
-                stroke="hsl(var(--border))"
+                stroke="var(--border)"
                 strokeDasharray="3 3"
               />
               <XAxis dataKey="month" tickLine={false} axisLine={false} />
@@ -365,7 +365,7 @@ const OverviewPage = () => {
                 yAxisId="count"
                 dataKey="count"
                 name="PO Count"
-                fill="hsl(var(--chart-1))"
+                fill="var(--chart-1)"
                 radius={[4, 4, 0, 0]}
               />
               <Line
@@ -373,7 +373,7 @@ const OverviewPage = () => {
                 type="monotone"
                 dataKey="amount"
                 name="Amount"
-                stroke="hsl(var(--chart-3))"
+                stroke="var(--chart-3)"
                 strokeWidth={2}
                 dot={{ r: 3 }}
               />
@@ -396,7 +396,7 @@ const OverviewPage = () => {
             >
               <CartesianGrid
                 horizontal={false}
-                stroke="hsl(var(--border))"
+                stroke="var(--border)"
                 strokeDasharray="3 3"
               />
               <XAxis
@@ -414,12 +414,12 @@ const OverviewPage = () => {
                 tick={{ fontSize: 11 }}
               />
               <Tooltip
-                cursor={{ fill: "hsl(var(--muted))" }}
+                cursor={{ fill: "var(--muted)" }}
                 formatter={(v) => [formatIDR(Number(v)), "Amount"]}
               />
               <Bar
                 dataKey="amount"
-                fill="hsl(var(--chart-2))"
+                fill="var(--chart-2)"
                 radius={[0, 4, 4, 0]}
               />
             </BarChart>
@@ -438,7 +438,7 @@ const OverviewPage = () => {
             >
               <CartesianGrid
                 horizontal={false}
-                stroke="hsl(var(--border))"
+                stroke="var(--border)"
                 strokeDasharray="3 3"
               />
               <XAxis
@@ -456,12 +456,12 @@ const OverviewPage = () => {
                 tick={{ fontSize: 11 }}
               />
               <Tooltip
-                cursor={{ fill: "hsl(var(--muted))" }}
+                cursor={{ fill: "var(--muted)" }}
                 formatter={(v) => [`${v} POs`, "Count"]}
               />
               <Bar
                 dataKey="count"
-                fill="hsl(var(--chart-4))"
+                fill="var(--chart-4)"
                 radius={[0, 4, 4, 0]}
               />
             </BarChart>
