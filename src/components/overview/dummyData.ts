@@ -1,4 +1,4 @@
-import type { OrderLine, PurchaseOrder } from "@/services/api";
+import type { OrderLine, PurchaseOrder } from "./dummyTypes";
 
 interface VendorSeed {
   id: number;

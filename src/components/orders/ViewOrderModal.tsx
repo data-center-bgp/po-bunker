@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
 import DOMPurify from "dompurify";
-import { ordersApi, type PurchaseOrder } from "@/services/api";
+import {
+  ordersService,
+  ORDER_TYPE_LABELS,
+  type PurchaseOrder,
+} from "@/services";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -85,7 +89,7 @@ const ViewOrderModal = ({
     try {
       setLoading(true);
       setError(null);
-      const response = await ordersApi.getOrderById(id);
+      const response = await ordersService.getOrderById(id);
       setOrder(response);
     } catch (err) {
       setError(
@@ -244,7 +248,7 @@ const ViewOrderModal = ({
                   <div className="space-y-2">
                     <Label className="text-muted-foreground">Customer</Label>
                     <Input
-                      value={order.partner_name || "-"}
+                      value={order.partner?.name || "-"}
                       readOnly
                       className="bg-muted"
                     />
@@ -252,7 +256,7 @@ const ViewOrderModal = ({
                   <div className="space-y-2">
                     <Label className="text-muted-foreground">Order Type</Label>
                     <Input
-                      value={order.order_type || "-"}
+                      value={ORDER_TYPE_LABELS[order.order_type] || order.order_type || "-"}
                       readOnly
                       className="bg-muted"
                     />
@@ -278,11 +282,17 @@ const ViewOrderModal = ({
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-muted-foreground">
-                      Planned Date
-                    </Label>
+                    <Label className="text-muted-foreground">Approved</Label>
                     <Input
-                      value={formatDate(order.date_planned)}
+                      value={
+                        order.date_approve
+                          ? `${formatDate(order.date_approve)}${
+                              order.first_approver
+                                ? ` by ${order.first_approver.name}`
+                                : ""
+                            }`
+                          : "-"
+                      }
                       readOnly
                       className="bg-muted"
                     />
@@ -307,18 +317,17 @@ const ViewOrderModal = ({
                         <TableHead className="text-right">Quantity</TableHead>
                         <TableHead className="text-right">Unit Price</TableHead>
                         <TableHead className="text-right">Subtotal</TableHead>
-                        <TableHead className="text-right">Total</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {order.order_lines && order.order_lines.length > 0 ? (
-                        order.order_lines.map((line, index) => (
-                          <TableRow key={index}>
-                            <TableCell>{line.product_name || "-"}</TableCell>
+                      {order.lines && order.lines.length > 0 ? (
+                        order.lines.map((line) => (
+                          <TableRow key={line.id}>
+                            <TableCell>{line.product?.name || "-"}</TableCell>
                             <TableCell>
                               <div className="flex items-center gap-2">
                                 <Ship className="h-3 w-3 text-muted-foreground" />
-                                {line.vessel_name || "-"}
+                                {line.vessel?.name || "-"}
                               </div>
                             </TableCell>
                             <TableCell className="text-right">
@@ -330,15 +339,12 @@ const ViewOrderModal = ({
                             <TableCell className="text-right">
                               {formatCurrency(line.price_subtotal || 0)}
                             </TableCell>
-                            <TableCell className="text-right">
-                              {formatCurrency(line.price_total || 0)}
-                            </TableCell>
                           </TableRow>
                         ))
                       ) : (
                         <TableRow>
                           <TableCell
-                            colSpan={6}
+                            colSpan={5}
                             className="h-24 text-center text-muted-foreground"
                           >
                             No order items found.
@@ -347,6 +353,12 @@ const ViewOrderModal = ({
                       )}
                     </TableBody>
                   </Table>
+                </div>
+                <div className="mt-3 flex justify-end text-sm text-muted-foreground">
+                  Total:{" "}
+                  <span className="ml-2 text-base font-semibold text-foreground">
+                    {formatCurrency(order.amount_total || 0)}
+                  </span>
                 </div>
               </div>
 

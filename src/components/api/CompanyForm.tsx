@@ -1,10 +1,12 @@
 import { useState, useEffect, type FormEvent } from "react";
 import {
-  ordersApi,
+  companiesService,
+  regionsService,
+  type BusinessUnit,
   type Company,
+  type CompanyInput,
   type Region,
-  type CreateCompanyRequest,
-} from "@/services/api";
+} from "@/services";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -48,8 +50,8 @@ interface CompanyFormData {
   city: string;
   zip: string;
   region_id: string;
-  currency_id: string;
-  bussines_unit_id: string;
+  currency: string;
+  business_unit_id: string;
 }
 
 const initialData: CompanyFormData = {
@@ -66,8 +68,8 @@ const initialData: CompanyFormData = {
   city: "",
   zip: "",
   region_id: "",
-  currency_id: "",
-  bussines_unit_id: "",
+  currency: "IDR",
+  business_unit_id: "",
 };
 
 const CompanyForm = ({
@@ -80,6 +82,7 @@ const CompanyForm = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [regions, setRegions] = useState<Region[]>([]);
+  const [businessUnits, setBusinessUnits] = useState<BusinessUnit[]>([]);
 
   const isEditing = !!company && !!company.id;
 
@@ -106,11 +109,10 @@ const CompanyForm = ({
       city: company.city ? String(company.city) : "",
       zip: company.zip ? String(company.zip) : "",
       region_id: company.region_id != null ? String(company.region_id) : "",
-      currency_id:
-        company.currency_id != null ? String(company.currency_id) : "",
-      bussines_unit_id:
-        company.bussines_unit_id != null
-          ? String(company.bussines_unit_id)
+      currency: company.currency || "IDR",
+      business_unit_id:
+        company.business_unit_id != null
+          ? String(company.business_unit_id)
           : "",
     });
     setError(null);
@@ -119,13 +121,21 @@ const CompanyForm = ({
   useEffect(() => {
     if (!isOpen) return;
     let cancelled = false;
-    ordersApi
+    regionsService
       .getRegions()
       .then((res) => {
-        if (!cancelled) setRegions(res.regions || []);
+        if (!cancelled) setRegions(res);
       })
       .catch(() => {
         if (!cancelled) setRegions([]);
+      });
+    companiesService
+      .getBusinessUnits()
+      .then((res) => {
+        if (!cancelled) setBusinessUnits(res);
+      })
+      .catch(() => {
+        if (!cancelled) setBusinessUnits([]);
       });
     return () => {
       cancelled = true;
@@ -151,34 +161,32 @@ const CompanyForm = ({
     setError(null);
 
     try {
-      const payload: CreateCompanyRequest = {
+      const text = (value: string) => value.trim() || null;
+      const payload: CompanyInput = {
         name: formData.name.trim(),
         active: formData.active,
+        code_company: text(formData.code_company),
+        code_company_general: text(formData.code_company_general),
+        email: text(formData.email),
+        phone: text(formData.phone),
+        website: text(formData.website),
+        vat: text(formData.vat),
+        street: text(formData.street),
+        street2: text(formData.street2),
+        city: text(formData.city),
+        zip: text(formData.zip),
+        region_id: formData.region_id !== "" ? Number(formData.region_id) : null,
+        currency: formData.currency.trim() || "IDR",
+        business_unit_id:
+          formData.business_unit_id !== ""
+            ? Number(formData.business_unit_id)
+            : null,
       };
 
-      if (formData.code_company.trim())
-        payload.code_company = formData.code_company.trim();
-      if (formData.code_company_general.trim())
-        payload.code_company_general = formData.code_company_general.trim();
-      if (formData.email.trim()) payload.email = formData.email.trim();
-      if (formData.phone.trim()) payload.phone = formData.phone.trim();
-      if (formData.website.trim()) payload.website = formData.website.trim();
-      if (formData.vat.trim()) payload.vat = formData.vat.trim();
-      if (formData.street.trim()) payload.street = formData.street.trim();
-      if (formData.street2.trim()) payload.street2 = formData.street2.trim();
-      if (formData.city.trim()) payload.city = formData.city.trim();
-      if (formData.zip.trim()) payload.zip = formData.zip.trim();
-      if (formData.region_id !== "")
-        payload.region_id = Number(formData.region_id);
-      if (formData.currency_id !== "")
-        payload.currency_id = Number(formData.currency_id);
-      if (formData.bussines_unit_id !== "")
-        payload.bussines_unit_id = Number(formData.bussines_unit_id);
-
       if (isEditing && company) {
-        await ordersApi.updateCompany(company.id, payload);
+        await companiesService.updateCompany(company.id, payload);
       } else {
-        await ordersApi.createCompany(payload);
+        await companiesService.createCompany(payload);
       }
       onSuccess();
     } catch (err) {
@@ -394,30 +402,38 @@ const CompanyForm = ({
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="company-currency">Currency ID</Label>
+                  <Label htmlFor="company-currency">Currency</Label>
                   <Input
                     id="company-currency"
-                    type="number"
-                    value={formData.currency_id}
-                    onChange={(e) =>
-                      handleChange("currency_id", e.target.value)
-                    }
-                    placeholder="e.g. 12 (IDR)"
+                    value={formData.currency}
+                    onChange={(e) => handleChange("currency", e.target.value)}
+                    placeholder="e.g. IDR"
                     disabled={loading}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="company-bu">Business Unit ID</Label>
-                  <Input
-                    id="company-bu"
-                    type="number"
-                    value={formData.bussines_unit_id}
-                    onChange={(e) =>
-                      handleChange("bussines_unit_id", e.target.value)
+                  <Label htmlFor="company-bu">Business Unit</Label>
+                  <Select
+                    value={formData.business_unit_id || NONE_VALUE}
+                    onValueChange={(value) =>
+                      handleChange(
+                        "business_unit_id",
+                        value === NONE_VALUE ? "" : value,
+                      )
                     }
-                    placeholder="e.g. 5"
-                    disabled={loading}
-                  />
+                  >
+                    <SelectTrigger id="company-bu" disabled={loading}>
+                      <SelectValue placeholder="None" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={NONE_VALUE}>None</SelectItem>
+                      {businessUnits.map((bu) => (
+                        <SelectItem key={bu.id} value={String(bu.id)}>
+                          {bu.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 

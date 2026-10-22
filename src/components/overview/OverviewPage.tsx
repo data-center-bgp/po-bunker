@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import type { PurchaseOrder } from "@/services/api";
+import type { PurchaseOrder } from "./dummyTypes";
 import {
   dummyOrders,
   formatIDR,

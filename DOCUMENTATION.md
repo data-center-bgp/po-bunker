@@ -36,7 +36,7 @@
 
 | Capability                | Description                                           |
 | ------------------------- | ----------------------------------------------------- |
-| Authentication            | Secure email/password login with JWT tokens           |
+| Authentication            | Supabase Auth email/password login, role-based access |
 | Purchase Order Management | Full CRUD — create, view, edit, and delete POs        |
 | Status Workflow           | Draft → Confirmed → Cancelled lifecycle               |
 | Multi-line Orders         | Each PO supports multiple product line items          |
@@ -58,10 +58,11 @@
 | **Icons**             | Lucide React                                                 |
 | **Rich Text Editor**  | React Quill (for order notes)                                |
 | **HTML Sanitization** | DOMPurify (prevents XSS)                                     |
-| **Excel Generation**  | xlsx (SheetJS)                                               |
+| **Excel Generation**  | xlsx (SheetJS, in the browser)                               |
 | **State Management**  | React Context API + `useState` / `useEffect`                 |
-| **HTTP Client**       | Native `fetch` API                                           |
-| **Auth Storage**      | Browser `localStorage`                                       |
+| **Backend**           | Supabase (Postgres + Auth), `po_bunker` schema               |
+| **Data Client**       | `@supabase/supabase-js`                                      |
+| **PDF Generation**    | jsPDF + jspdf-autotable (in the browser)                     |
 
 ---
 
@@ -70,7 +71,7 @@
 ```
 Browser (React SPA)
        │
-       ├── AuthContext  ──── tokenManager (localStorage)
+       ├── AuthContext  ──── Supabase Auth session
        │
        ├── Login Page
        │
@@ -84,22 +85,17 @@ Browser (React SPA)
                          ├── ViewOrderModal (detail modal)
                          └── PdfPreviewModal
 
-API Layer (src/services/api/)
+Service layer (src/services/)  →  supabase-js (src/lib/supabase.ts)
        │
-       └── Proxy  →  https://order.barokahperkasagroup.com
-             ├── /api/login2
-             ├── /api/purchase-orders
-             ├── /api/companies
-             ├── /api/partners
-             ├── /api/shipping_vessels
-             ├── /api/regions
-             ├── /api/products
-             ├── /api/code-budgets
-             ├── /api/users
-             └── /api/reports/...  (PDF / Excel)
+       └── Supabase project CGA, schema `po_bunker`
+             ├── Auth (email/password)  +  po_bunker.profiles (role)
+             ├── Tables: purchase_orders, purchase_order_lines, companies,
+             │           partners, regions, vessels, products, code_budgets, ...
+             └── RPC: save_purchase_order, confirm_/cancel_purchase_order,
+                      set_purchase_order_draft
 ```
 
-The frontend is a **Single Page Application (SPA)**. In development, Vite proxies all `/api` requests to the backend to avoid CORS issues. In production, an Nginx reverse-proxy handles the same routing.
+The frontend is a **Single Page Application (SPA)** that talks to Supabase directly from the browser. Access is enforced in the database with row level security, not in the frontend. There is no custom backend server.
 
 ---
 
@@ -120,6 +116,9 @@ cd po-bunker
 # Install dependencies
 npm install
 
+# Configure Supabase (URL + anon key)
+cp .env.example .env
+
 # Start the development server
 npm run dev
 ```
@@ -132,7 +131,7 @@ The app will be available at `http://localhost:5173`.
 npm run build
 ```
 
-Output is placed in the `dist/` folder. Deploy behind an Nginx server that reverse-proxies `/api` to `https://order.barokahperkasagroup.com`.
+Output is placed in the `dist/` folder: a static site that can be served by any web server. Nothing needs to be proxied. Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` before building. See `supabase/README.md` for the database setup.
 
 ---
 
@@ -150,7 +149,15 @@ Output is placed in the `dist/` folder. Deploy behind an Nginx server that rever
 - Email must be a valid email format.
 - Password must be at least 6 characters.
 
-On success, an access token is stored in the browser and you are redirected to the **Dashboard**. Your session persists across page refreshes until you explicitly log out.
+Your account also needs an active profile in the app (an administrator creates it). A valid Supabase account without a profile is signed out again with an "access" message.
+
+On success you are redirected to the **Dashboard**. Supabase keeps the session and refreshes it automatically until you log out.
+
+| Role   | Can do                                                        |
+| ------ | ------------------------------------------------------------- |
+| admin  | Everything, including users and master data such as vessels   |
+| staff  | Create/edit orders, companies, partners and regions           |
+| viewer | Read-only: write buttons are hidden                           |
 
 > If login fails, an error message is displayed below the email field.
 
@@ -222,14 +229,12 @@ Each order must have at least one line item. Click **"Add Line"** to add more ro
 | **Region**       | Searchable dropdown                              | Optional                              |
 | **Quantity**     | Number of units                                  | Required                              |
 | **Unit Price**   | Price per unit (IDR)                             | Required                              |
-| **Priority**     | Urgency level: `L` Low / `M` Medium / `H` High   | Optional (edit only)                  |
+| **Priority**     | Urgency level: `L` Low / `M` Medium / `H` High   | Optional                              |
 | **Project**      | Project name or reference                        | Optional                              |
-| **Requested By** | System user who requested the item (searchable)  | Optional (edit only)                  |
+| **Requested By** | App user who requested the item (searchable)     | Optional                              |
 | **Category**     | Product division/category                        | Auto-filled from product              |
 | **Code Budget**  | Budget allocation code (searchable, overridable) | Auto-filled from product              |
 | **Unit**         | Unit of Measure                                  | Auto-filled from product              |
-
-> **Note:** Priority and Requested By can only be set when **editing** an existing order, not during initial creation. After creating an order, open it in Edit mode to fill these fields.
 
 - The **subtotal** per line and the **grand total** are calculated and displayed automatically.
 - To remove a line, click the **trash icon** on that row.
@@ -292,8 +297,8 @@ Two export formats are available per order from the **action buttons** in the ta
 #### PDF Preview
 
 1. Click the **Printer icon** on the order row.
-2. A loading spinner appears while the PDF is generated server-side.
-3. The **PDF Preview** modal opens with the document rendered inside the browser.
+2. A loading spinner appears while the PDF is generated in your browser.
+3. The **PDF Preview** modal opens with the generated document.
 4. Use your browser's built-in PDF toolbar to **save or print** the document.
 5. Click **Close** to dismiss the modal.
 
@@ -309,7 +314,7 @@ Two export formats are available per order from the **action buttons** in the ta
 
 1. Click the **Trash icon** on the order row.
 2. A **confirmation dialog** appears showing the order name.
-3. If the order is in **Confirmed** state, you are warned that it will be cancelled first before deletion.
+3. If the order is in **Confirmed** state, you are warned that it will be cancelled first before deletion. Only draft and cancelled orders can be deleted.
 4. Click **Confirm Delete** to permanently remove the order.
 5. Click **Cancel** to abort.
 
@@ -343,104 +348,87 @@ Two export formats are available per order from the **action buttons** in the ta
 
 ## 7. Data Model
 
-### Purchase Order
+The authoritative definition is in `supabase/migrations/0001_schema.sql`. The shapes the frontend uses are in `src/services/types.ts`.
 
-| Field            | Type                            | Description                        |
-| ---------------- | ------------------------------- | ---------------------------------- |
-| `id`             | number                          | Unique identifier                  |
-| `name`           | string                          | PO reference (e.g., `PO/2024/001`) |
-| `partner_name`   | string                          | Vendor/supplier name               |
-| `company_name`   | string                          | Issuing company                    |
-| `order_type`     | string                          | Type of order                      |
-| `state`          | `draft` / `purchase` / `cancel` | Order lifecycle state              |
-| `date_order`     | string                          | Order timestamp                    |
-| `amount_untaxed` | number                          | Subtotal (IDR)                     |
-| `amount_tax`     | number                          | Tax amount (IDR)                   |
-| `amount_total`   | number                          | Grand total (IDR)                  |
-| `notes`          | string                          | HTML-formatted notes               |
-| `order_lines`    | `OrderLine[]`                   | Line items                         |
+### Purchase Order (`po_bunker.purchase_orders`)
 
-### Order Line
+| Field                | Type                                              | Description                         |
+| -------------------- | ------------------------------------------------- | ----------------------------------- |
+| `id`                 | bigint                                            | Unique identifier                   |
+| `name`               | text                                              | PO number, `PO/YYYY/NNNN`, assigned on create |
+| `company_id`         | bigint → `companies`                              | Issuing company                     |
+| `partner_id`         | bigint → `partners`                               | Vendor/supplier                     |
+| `order_type`         | `bunker_fuel` / `bunker_water` / `logistic`       | Type of order                       |
+| `state`              | `draft` / `to approve` / `purchase` / `done` / `cancel` | Order lifecycle state         |
+| `date_order`         | timestamptz                                       | Order date and time                 |
+| `date_approve`       | timestamptz                                       | Set when confirmed                  |
+| `amount_untaxed`     | numeric                                           | Sum of line subtotals (maintained by trigger) |
+| `amount_tax`         | numeric                                           | 0 for now                           |
+| `amount_total`       | numeric                                           | untaxed + tax - discount            |
+| `notes`              | text                                              | HTML-formatted notes                |
+| `first_approved_by`  | uuid → `profiles`                                 | Who confirmed it                    |
 
-| Field               | Type                                      | Description                 |
-| ------------------- | ----------------------------------------- | --------------------------- |
-| `product_name`      | string                                    | Product name                |
-| `product_code`      | string                                    | SKU / product code          |
-| `vessel_name`       | string                                    | Target vessel               |
-| `region_name`       | string                                    | Operational region          |
-| `product_qty`       | number                                    | Quantity                    |
-| `product_uom_name`  | string                                    | Unit of measure             |
-| `price_unit`        | number                                    | Unit price (IDR)            |
-| `price_subtotal`    | number                                    | Line subtotal (IDR)         |
-| `project_name`      | string                                    | Associated project          |
-| `divisi_name`       | string                                    | Division/category           |
-| `code_budget_name`  | string                                    | Budget code                 |
-| `requested_by_name` | string \| null                            | Name of the requesting user |
-| `priority`          | `"low"` \| `"medium"` \| `"high"` \| null | Line item priority          |
+### Order Line (`po_bunker.purchase_order_lines`)
+
+| Field            | Type                            | Description                    |
+| ---------------- | ------------------------------- | ------------------------------ |
+| `product_id`     | bigint → `products`             | Product                        |
+| `vessel_id`      | bigint → `vessels`              | Target vessel                  |
+| `region_id`      | bigint → `regions`              | Operational region (optional)  |
+| `code_budget_id` | bigint → `code_budgets`         | Budget code (optional)         |
+| `category_id`    | bigint → `product_categories`   | Division/category              |
+| `uom_id`         | bigint → `uoms`                 | Unit of measure                |
+| `product_qty`    | numeric (> 0)                   | Quantity                       |
+| `price_unit`     | numeric (>= 0)                  | Unit price (IDR)               |
+| `price_subtotal` | numeric (generated)             | `round(qty * unit price, 2)`   |
+| `project`        | text                            | Project name or reference      |
+| `requested_by`   | uuid → `profiles`               | Requesting user (optional)     |
+| `priority`       | `low` / `medium` / `high`       | Line priority (optional)       |
 
 ---
 
-## 8. API Integration
+## 8. Backend (Supabase)
 
-The application connects to the backend at `https://order.barokahperkasagroup.com`.
+The app uses one Supabase client (`src/lib/supabase.ts`) scoped to the `po_bunker` schema. Data access lives in `src/services/`.
 
 ### Authentication
 
-| Method | Endpoint      | Description                               |
-| ------ | ------------- | ----------------------------------------- |
-| `POST` | `/api/login2` | Authenticate user, returns `access_token` |
+`supabase.auth.signInWithPassword` with email and password. After sign-in the app reads the user's row in `po_bunker.profiles`; no active profile means no access. Roles: `admin`, `staff`, `viewer`.
 
-Authentication flow:
+### Writes to orders
 
-1. User submits email + password.
-2. App POSTs to `/api/login2` with `{ login, password, db: "po-bunker" }`.
-3. Server returns `{ access_token, user_id, login }`.
-4. Token is stored in `localStorage` and sent as `Authorization: Bearer <token>` on all subsequent requests.
+Orders and lines cannot be inserted or updated directly. The app calls database functions:
 
-### Purchase Orders
+| RPC                                            | Description                                                   |
+| ---------------------------------------------- | ------------------------------------------------------------- |
+| `save_purchase_order(p_id, p_header, p_lines)` | Create (`p_id` null) or edit a draft; header and lines atomically |
+| `confirm_purchase_order(p_id)`                 | draft → purchase                                              |
+| `cancel_purchase_order(p_id)`                  | draft / to approve / purchase → cancel                        |
+| `set_purchase_order_draft(p_id)`               | to approve / purchase / cancel → draft                        |
 
-| Method   | Endpoint                            | Description                 |
-| -------- | ----------------------------------- | --------------------------- |
-| `GET`    | `/api/purchase-orders?page=&limit=` | List orders (paginated)     |
-| `GET`    | `/api/purchase-orders/:id`          | Get single order with lines |
-| `POST`   | `/api/purchase-orders`              | Create new order            |
-| `PUT`    | `/api/purchase-orders/:id`          | Update existing order       |
-| `DELETE` | `/api/purchase-orders/:id`          | Delete order                |
-| `POST`   | `/api/purchase-orders/:id/confirm`  | Confirm (draft → purchase)  |
-| `POST`   | `/api/purchase-orders/:id/cancel`   | Cancel order                |
-| `POST`   | `/api/purchase-orders/:id/draft`    | Reset to draft              |
+Deleting is a plain `DELETE`, allowed only for draft or cancelled orders.
 
-### Reference Data
+### Reference data
 
-| Method | Endpoint                | Description                                      |
-| ------ | ----------------------- | ------------------------------------------------ |
-| `GET`  | `/api/companies`        | List companies                                   |
-| `GET`  | `/api/partners`         | List vendors/partners                            |
-| `GET`  | `/api/shipping_vessels` | List vessels                                     |
-| `GET`  | `/api/regions`          | List regions (auto-paginated, all pages fetched) |
-| `GET`  | `/api/products`         | List products                                    |
-| `GET`  | `/api/code-budgets`     | List budget codes                                |
-| `GET`  | `/api/users`            | List system users (for Requested By field)       |
+Companies, partners and regions can be created and edited from the app. Vessels, products, code budgets, units of measure, categories and business units are read-only in the app and are managed in Supabase (admin only; see `supabase/README.md` for CSV import).
 
 ### Export
 
-| Method | Endpoint                 | Description           |
-| ------ | ------------------------ | --------------------- |
-| `GET`  | `/api/reports/pdf/:id`   | Generate PDF report   |
-| `GET`  | `/api/reports/excel/:id` | Generate Excel report |
+PDF (jsPDF) and Excel (SheetJS) are generated in the browser from the order data (`src/lib/exportOrder.ts`).
 
 ---
 
 ## 9. Security
 
-| Measure                 | Implementation                                                                                                               |
-| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| **Authentication**      | Bearer JWT token on every API request                                                                                        |
-| **Session persistence** | Token stored in `localStorage`; cleared on logout                                                                            |
-| **XSS prevention**      | All HTML from the server (order notes) is sanitized using **DOMPurify** before rendering                                     |
-| **Input validation**    | Client-side form validation before submission (email format, required fields, minimum lengths)                               |
-| **HTTPS**               | All API traffic goes over HTTPS                                                                                              |
-| **Proxy**               | Dev proxy hides the backend origin; production uses Nginx reverse proxy — no credentials are embedded in the frontend bundle |
+| Measure                 | Implementation                                                                                                      |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| **Authentication**      | Supabase Auth; the session is stored by supabase-js and refreshed automatically                                     |
+| **Authorization**       | Row level security on every `po_bunker` table, scoped to users with an active profile; writes limited by role       |
+| **Order integrity**     | No direct INSERT/UPDATE on orders; the state machine and totals are enforced in database functions and triggers     |
+| **XSS prevention**      | Order notes (HTML) are sanitized with **DOMPurify** before rendering                                                |
+| **Input validation**    | Client-side form validation plus database CHECK constraints (order type, state, quantity, priority)                 |
+| **Keys**                | Only the public anon key is in the frontend bundle. The service role key must never be used in the browser or committed. |
+| **Shared project**      | The Supabase project is shared with other apps; policies require a `po_bunker.profiles` row so other apps' users get nothing |
 
 ---
 
@@ -470,17 +458,18 @@ po-bunker/
 │   ├── contexts/
 │   │   ├── AuthContext.tsx                # Auth state provider
 │   │   └── useAuth.ts                     # Auth context hook
-│   ├── services/
-│   │   └── api/
-│   │       ├── config.ts                  # Base URL & headers
-│   │       ├── authApi.ts                 # Login endpoint
-│   │       ├── ordersApi.ts               # All PO-related endpoints
-│   │       ├── tokenManager.ts            # localStorage token helpers
-│   │       └── index.ts                   # Re-exports
+│   ├── services/                          # Supabase data access
+│   │   ├── orders.ts                      # Orders, lines, state changes (RPC)
+│   │   ├── companies.ts, partners.ts, regions.ts, lookups.ts
+│   │   ├── types.ts                       # Row shapes used by the UI
+│   │   └── helpers.ts                     # Error mapping
 │   └── lib/
+│       ├── supabase.ts                    # Supabase client (po_bunker schema)
+│       ├── exportOrder.ts                 # PDF + Excel generation
 │       └── utils.ts                       # Utility helpers (cn, etc.)
 ├── index.html
-├── vite.config.ts                         # Dev proxy config
+├── vite.config.ts                         # Vite config
+├── supabase/                              # Migrations, import templates, DB README
 ├── tsconfig.json
 ├── package.json
 └── DOCUMENTATION.md
@@ -488,4 +477,4 @@ po-bunker/
 
 ---
 
-_Documentation last updated 2026-06-18 — PO Bunker v0.0.0 — PT Barokah Gemilang Perkasa_
+_Documentation last updated 2026-10-22 — PO Bunker v0.0.0 — PT Barokah Gemilang Perkasa_

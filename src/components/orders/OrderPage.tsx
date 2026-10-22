@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
-import { ordersApi, type PurchaseOrder } from "@/services/api";
+import { ordersService, type PurchaseOrder } from "@/services";
+import { useAuth } from "@/contexts/useAuth";
 import OrdersTable from "@/components/orders/OrdersTable";
 import OrderForm from "@/components/orders/OrderForm";
 import ViewOrderModal from "@/components/orders/ViewOrderModal";
@@ -7,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { AlertCircle, Plus } from "lucide-react";
 
 const OrdersPage = () => {
+  const { canWrite } = useAuth();
   const [showForm, setShowForm] = useState(false);
   const [editingOrder, setEditingOrder] = useState<PurchaseOrder | null>(null);
   const [orders, setOrders] = useState<PurchaseOrder[]>([]);
@@ -22,16 +24,10 @@ const OrdersPage = () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await ordersApi.getOrders(currentPage, limit);
-      console.log("API Response:", response);
-      const basicOrders = response.purchase_orders || [];
-      setTotalCount(response.total_count || basicOrders.length);
-
-      // Parallel-fetch full order details to get order_lines for each order
-      const fullOrders = await Promise.all(
-        basicOrders.map((o) => ordersApi.getOrderById(o.id)),
-      );
-      setOrders(fullOrders);
+      // One query returns each order together with its lines.
+      const page = await ordersService.getOrders(currentPage, limit);
+      setOrders(page.orders);
+      setTotalCount(page.totalCount);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to fetch orders");
       console.error("Error fetching orders:", err);
@@ -52,8 +48,7 @@ const OrdersPage = () => {
 
   const handleEdit = async (orderId: number) => {
     try {
-      // Fetch full order with order_lines (list endpoint doesn't include them)
-      const fullOrder = await ordersApi.getOrderById(orderId);
+      const fullOrder = await ordersService.getOrderById(orderId);
       setEditingOrder(fullOrder);
       setShowForm(true);
     } catch (err) {
@@ -68,20 +63,15 @@ const OrdersPage = () => {
     setViewModalOpen(true);
   };
 
-  const handleDelete = async (
-    orderId: number,
-    cancelFirst: boolean = false,
-  ) => {
-    if (cancelFirst) {
-      await ordersApi.cancelOrder(orderId);
-    }
-    await ordersApi.deleteOrder(orderId);
+  // deleteOrder cancels a confirmed order first when needed.
+  const handleDelete = async (orderId: number) => {
+    await ordersService.deleteOrder(orderId);
     fetchOrders();
   };
 
   const handleConfirm = async (orderId: number) => {
     try {
-      await ordersApi.confirmOrder(orderId);
+      await ordersService.confirmOrder(orderId);
       fetchOrders();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to confirm order");
@@ -90,21 +80,16 @@ const OrdersPage = () => {
 
   const handleCancel = async (orderId: number) => {
     try {
-      await ordersApi.cancelOrder(orderId);
+      await ordersService.cancelOrder(orderId);
       fetchOrders();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to cancel order");
     }
   };
 
-  const handleDeleteSingle = async (orderId: number) => {
-    await ordersApi.deleteOrder(orderId);
-    fetchOrders();
-  };
-
   const handleSetDraft = async (orderId: number) => {
     try {
-      await ordersApi.draftOrder(orderId);
+      await ordersService.draftOrder(orderId);
       fetchOrders();
     } catch (err) {
       setError(
@@ -123,10 +108,12 @@ const OrdersPage = () => {
             Manage your purchase orders here.
           </p>
         </div>
-        <Button onClick={() => setShowForm(true)}>
-          <Plus className="h-4 w-4" />
-          Add New Order
-        </Button>
+        {canWrite && (
+          <Button onClick={() => setShowForm(true)}>
+            <Plus className="h-4 w-4" />
+            Add New Order
+          </Button>
+        )}
       </div>
 
       {/* Error Message */}
@@ -143,14 +130,14 @@ const OrdersPage = () => {
         loading={loading}
         currentPage={currentPage}
         totalCount={totalCount}
-        onConfirm={handleConfirm}
-        onCancel={handleCancel}
-        onSetDraft={handleSetDraft}
+        onConfirm={canWrite ? handleConfirm : undefined}
+        onCancel={canWrite ? handleCancel : undefined}
+        onSetDraft={canWrite ? handleSetDraft : undefined}
         limit={limit}
         onPageChange={setCurrentPage}
-        onEdit={(order) => handleEdit(order.id)}
+        onEdit={canWrite ? (order) => handleEdit(order.id) : undefined}
         onView={handleView}
-        onDelete={handleDelete}
+        onDelete={canWrite ? handleDelete : undefined}
       />
 
       {/* Modal Form */}
@@ -172,10 +159,10 @@ const OrdersPage = () => {
           setViewModalOpen(open);
           if (!open) setViewingOrderId(null);
         }}
-        onConfirm={handleConfirm}
-        onCancel={handleCancel}
-        onDelete={handleDeleteSingle}
-        onSetDraft={handleSetDraft}
+        onConfirm={canWrite ? handleConfirm : undefined}
+        onCancel={canWrite ? handleCancel : undefined}
+        onDelete={canWrite ? handleDelete : undefined}
+        onSetDraft={canWrite ? handleSetDraft : undefined}
         onRefreshList={fetchOrders}
       />
     </div>

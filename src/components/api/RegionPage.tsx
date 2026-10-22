@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
-import { ordersApi, type Region } from "@/services/api";
+import { regionsService, type Region } from "@/services";
+import { useAuth } from "@/contexts/useAuth";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,6 +25,7 @@ import RegionForm from "@/components/api/RegionForm";
 const PAGE_SIZE = 20;
 
 const RegionPage = () => {
+  const { canWrite } = useAuth();
   const [regions, setRegions] = useState<Region[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -37,8 +39,7 @@ const RegionPage = () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await ordersApi.getRegions();
-      setRegions(response.regions || []);
+      setRegions(await regionsService.getRegions());
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Failed to fetch regions",
@@ -105,10 +106,12 @@ const RegionPage = () => {
             Browse, search, and manage regions.
           </p>
         </div>
-        <Button onClick={handleAddNew}>
-          <Plus className="h-4 w-4" />
-          Add New Region
-        </Button>
+        {canWrite && (
+          <Button onClick={handleAddNew}>
+            <Plus className="h-4 w-4" />
+            Add New Region
+          </Button>
+        )}
       </div>
 
       {/* Search */}
@@ -177,7 +180,7 @@ const RegionPage = () => {
                         {r.bps_code != null ? r.bps_code : "-"}
                       </TableCell>
                       <TableCell>
-                        {r.companies_count != null ? r.companies_count : "-"}
+                        {r.companies_count}
                       </TableCell>
                       <TableCell>
                         <Badge
@@ -187,14 +190,16 @@ const RegionPage = () => {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleEdit(r)}
-                          title="Edit"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
+                        {canWrite && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleEdit(r)}
+                            title="Edit"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}

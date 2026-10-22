@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
-import { ordersApi, type Partner } from "@/services/api";
+import { partnersService, type Partner } from "@/services";
+import { useAuth } from "@/contexts/useAuth";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,6 +25,7 @@ import PartnerForm from "@/components/api/PartnerForm";
 const PAGE_SIZE = 20;
 
 const PartnerPage = () => {
+  const { canWrite } = useAuth();
   const [partners, setPartners] = useState<Partner[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -38,8 +40,7 @@ const PartnerPage = () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await ordersApi.getPartners();
-      setPartners(response.partners || []);
+      setPartners(await partnersService.getPartners());
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Failed to fetch partners",
@@ -57,8 +58,8 @@ const PartnerPage = () => {
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return partners.filter((p) => {
-      if (vendorOnly && !(p.is_company && p.supplier_rank > 0)) return false;
-      if (q && !p.display_name?.toLowerCase().includes(q)) return false;
+      if (vendorOnly && !(p.is_company && p.is_supplier)) return false;
+      if (q && !p.name.toLowerCase().includes(q)) return false;
       return true;
     });
   }, [partners, query, vendorOnly]);
@@ -116,10 +117,12 @@ const PartnerPage = () => {
             Browse, search, and manage business partners.
           </p>
         </div>
-        <Button onClick={handleAddNew}>
-          <Plus className="h-4 w-4" />
-          Add New Partner
-        </Button>
+        {canWrite && (
+          <Button onClick={handleAddNew}>
+            <Plus className="h-4 w-4" />
+            Add New Partner
+          </Button>
+        )}
       </div>
 
       {/* Search + Filters */}
@@ -192,7 +195,7 @@ const PartnerPage = () => {
                   {pageItems.map((p) => (
                     <TableRow key={p.id}>
                       <TableCell className="font-medium">
-                        {p.display_name || p.name}
+                        {p.name}
                       </TableCell>
                       <TableCell>{p.type || "-"}</TableCell>
                       <TableCell>
@@ -200,7 +203,7 @@ const PartnerPage = () => {
                       </TableCell>
                       <TableCell>{p.email || "-"}</TableCell>
                       <TableCell>{p.phone || p.mobile || "-"}</TableCell>
-                      <TableCell>{p.parent_name || "-"}</TableCell>
+                      <TableCell>{p.parent?.name || "-"}</TableCell>
                       <TableCell>
                         <Badge
                           variant={p.active ? "success" : "secondary"}
@@ -209,14 +212,16 @@ const PartnerPage = () => {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleEdit(p)}
-                          title="Edit"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
+                        {canWrite && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleEdit(p)}
+                            title="Edit"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}

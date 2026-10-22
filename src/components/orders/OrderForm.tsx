@@ -1,14 +1,20 @@
 import { useState, useEffect, useMemo, type FormEvent } from "react";
 import {
-  ordersApi,
-  type Vessel,
-  type Region,
-  type Company,
-  type Partner,
-  type Product,
+  companiesService,
+  lookupsService,
+  ordersService,
+  partnersService,
+  regionsService,
   type CodeBudget,
-  type User,
-} from "@/services/api";
+  type Company,
+  type OrderLineInput,
+  type OrderType,
+  type Partner,
+  type Priority,
+  type Product,
+  type Region,
+  type Vessel,
+} from "@/services";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,7 +28,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import type { PurchaseOrder } from "@/services/api";
+import type { PurchaseOrder } from "@/services";
 import {
   Select,
   SelectContent,
@@ -108,6 +114,22 @@ const initialHeader: OrderHeaderData = {
   notes: "",
 };
 
+interface Requester {
+  id: string;
+  name: string;
+}
+
+// ISO timestamp -> value for <input type="datetime-local"> in local time.
+const toLocalInput = (iso: string) => {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+};
+
+const vesselLabel = (v: Vessel) =>
+  v.type ? `${v.type.name} - ${v.name}` : v.name;
+
 const formatCurrency = (n: number) =>
   new Intl.NumberFormat("id-ID", {
     style: "currency",
@@ -128,7 +150,7 @@ const OrderForm = ({
   const [companies, setCompanies] = useState<Company[]>([]);
   const [partners, setPartners] = useState<Partner[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
-  const [users, setUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<Requester[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingVessels, setLoadingVessels] = useState(true);
   const [loadingRegions, setLoadingRegions] = useState(true);
@@ -154,7 +176,9 @@ const OrderForm = ({
   // existing order's partner no longer matches (e.g. legacy data), keep it
   // selectable so editing doesn't silently blank out the current value.
   const vendorPartners = useMemo(() => {
-    const filtered = partners.filter((p) => p.is_company && p.supplier_rank > 0);
+    const filtered = partners.filter(
+      (p) => p.active && p.is_company && p.is_supplier,
+    );
     if (
       order?.partner_id != null &&
       !filtered.some((p) => p.id === order.partner_id)
@@ -189,13 +213,11 @@ const OrderForm = ({
       companyId: order.company_id?.toString?.() || "",
       partnerId: order.partner_id?.toString?.() || "",
       orderType: order.order_type || "",
-      dateOrder: order.date_order
-        ? order.date_order.replace(" ", "T").slice(0, 16)
-        : "",
+      dateOrder: order.date_order ? toLocalInput(order.date_order) : "",
       notes: order.notes || "",
     });
 
-    const orderLines = order.order_lines || [];
+    const orderLines = order.lines || [];
     if (orderLines.length === 0) {
       setLines([{ ...emptyLine }]);
     } else {
@@ -207,12 +229,12 @@ const OrderForm = ({
           regionId: l.region_id ? l.region_id.toString() : "",
           quantity: l.product_qty?.toString() || "",
           unitPrice: l.price_unit?.toString() || "",
-          project: l.project_name || "",
-          requestedById: l.requested_by ? l.requested_by.toString() : "",
-          priority: typeof l.priority === "string" ? l.priority : "",
-          categoryId: l.divisi_id?.toString() || "",
+          project: l.project || "",
+          requestedById: l.requested_by || "",
+          priority: l.priority || "",
+          categoryId: l.category_id ? l.category_id.toString() : "",
           codeBudgetId: l.code_budget_id ? l.code_budget_id.toString() : "",
-          uomId: l.product_uom?.toString() || "",
+          uomId: l.uom_id?.toString() || "",
         })),
       );
     }
@@ -221,8 +243,7 @@ const OrderForm = ({
   const fetchRegions = async () => {
     try {
       setLoadingRegions(true);
-      const response = await ordersApi.getRegions();
-      setRegions(response.regions || []);
+      setRegions(await regionsService.getRegions());
     } catch (err) {
       console.error("Error fetching regions:", err);
     } finally {
@@ -233,8 +254,7 @@ const OrderForm = ({
   const fetchVessels = async () => {
     try {
       setLoadingVessels(true);
-      const response = await ordersApi.getVessels();
-      setVessels(response.shipping_vessels || []);
+      setVessels(await lookupsService.getVessels());
     } catch (err) {
       console.error("Error fetching vessels:", err);
       setError(err instanceof Error ? err.message : "Failed to fetch vessels");
@@ -246,8 +266,7 @@ const OrderForm = ({
   const fetchCompanies = async () => {
     try {
       setLoadingCompanies(true);
-      const response = await ordersApi.getCompanies();
-      setCompanies(response.companies || []);
+      setCompanies(await companiesService.getCompanies());
     } catch (err) {
       console.error("Error fetching companies:", err);
       setError(
@@ -261,8 +280,7 @@ const OrderForm = ({
   const fetchPartners = async () => {
     try {
       setLoadingPartners(true);
-      const response = await ordersApi.getPartners();
-      setPartners(response.partners || []);
+      setPartners(await partnersService.getPartners());
     } catch (err) {
       console.error("Error fetching partners:", err);
       setError(err instanceof Error ? err.message : "Failed to fetch partners");
@@ -274,8 +292,7 @@ const OrderForm = ({
   const fetchProducts = async () => {
     try {
       setLoadingProducts(true);
-      const response = await ordersApi.getProducts();
-      setProducts(response.products || []);
+      setProducts(await lookupsService.getProducts());
     } catch (err) {
       console.error("Error fetching products:", err);
       setError(err instanceof Error ? err.message : "Failed to fetch products");
@@ -287,8 +304,7 @@ const OrderForm = ({
   const fetchCodeBudgets = async () => {
     try {
       setLoadingCodeBudgets(true);
-      const response = await ordersApi.getCodeBudgets();
-      setCodeBudgets(response.code_budgets || []);
+      setCodeBudgets(await lookupsService.getCodeBudgets());
     } catch (err) {
       console.error("Error fetching code budgets:", err);
     } finally {
@@ -299,8 +315,7 @@ const OrderForm = ({
   const fetchUsers = async () => {
     try {
       setLoadingUsers(true);
-      const response = await ordersApi.getUsers();
-      setUsers(response.users || []);
+      setUsers(await lookupsService.getRequesters());
     } catch (err) {
       console.error("Error fetching users:", err);
     } finally {
@@ -319,7 +334,7 @@ const OrderForm = ({
     if (product) {
       updateLine(idx, {
         productId,
-        categoryId: product.categ_id.toString(),
+        categoryId: product.category_id.toString(),
         codeBudgetId: product.code_budget_id?.toString() || "",
         uomId: product.uom_id.toString(),
       });
@@ -384,40 +399,32 @@ const OrderForm = ({
     }
 
     try {
-      const orderLines = lines.map((l) => ({
+      const orderLines: OrderLineInput[] = lines.map((l) => ({
         ...(isEditing && l.id ? { id: l.id } : {}),
         product_id: parseInt(l.productId),
+        vessel_id: parseInt(l.vesselId),
+        uom_id: parseInt(l.uomId),
         product_qty: parseFloat(l.quantity),
         price_unit: parseFloat(l.unitPrice),
-        total_price: parseFloat(l.quantity) * parseFloat(l.unitPrice),
-        vessel_id: parseInt(l.vesselId),
         region_id: l.regionId ? parseInt(l.regionId) : null,
-        category_id: parseInt(l.categoryId),
         code_budget_id: l.codeBudgetId ? parseInt(l.codeBudgetId) : null,
-        uom_id: parseInt(l.uomId),
+        category_id: l.categoryId ? parseInt(l.categoryId) : null,
         project: l.project,
-        ...(isEditing && l.requestedById
-          ? { requested_by: parseInt(l.requestedById) }
-          : {}),
-        ...(isEditing && l.priority ? { priority: l.priority } : {}),
+        requested_by: l.requestedById || null,
+        priority: (l.priority as Priority) || null,
       }));
 
-      const orderData = {
-        company_id: parseInt(header.companyId),
-        partner_id: parseInt(header.partnerId),
-        order_type: header.orderType,
-        date_order: header.dateOrder.replace("T", " ") + ":00",
-        notes: header.notes,
-        picking_type_id: 23,
-        order_lines: orderLines,
-      };
-      console.log("Submitting order data:", JSON.stringify(orderData, null, 2));
-
-      if (order && order.id) {
-        await ordersApi.updateOrder(order.id, orderData);
-      } else {
-        await ordersApi.createOrder(orderData);
-      }
+      await ordersService.saveOrder(
+        isEditing && order ? order.id : null,
+        {
+          company_id: parseInt(header.companyId),
+          partner_id: parseInt(header.partnerId),
+          order_type: header.orderType as OrderType,
+          date_order: new Date(header.dateOrder).toISOString(),
+          notes: header.notes,
+        },
+        orderLines,
+      );
       setHeader(initialHeader);
       setLines([{ ...emptyLine }]);
       onSuccess();
@@ -502,7 +509,7 @@ const OrderForm = ({
                             key={partner.id}
                             value={partner.id.toString()}
                           >
-                            {partner.display_name}
+                            {partner.name}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -533,7 +540,9 @@ const OrderForm = ({
                             key={company.id}
                             value={company.id.toString()}
                           >
-                            {company.code_company} - {company.name}
+                            {company.code_company
+                              ? `${company.code_company} - ${company.name}`
+                              : company.name}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -786,7 +795,7 @@ const OrderForm = ({
                                                 line.vesselId,
                                             );
                                             return v
-                                              ? `${v.type_name} - ${v.name}`
+                                              ? vesselLabel(v)
                                               : "Select vessel";
                                           })()
                                         : "Select vessel"}
@@ -805,7 +814,7 @@ const OrderForm = ({
                                       {vessels.map((vessel) => (
                                         <CommandItem
                                           key={vessel.id}
-                                          value={`${vessel.type_name} ${vessel.name}`}
+                                          value={vesselLabel(vessel)}
                                           onSelect={() => {
                                             updateLine(idx, {
                                               vesselId:
@@ -825,7 +834,7 @@ const OrderForm = ({
                                                 : "opacity-0"
                                             }`}
                                           />
-                                          {vessel.type_name} - {vessel.name}
+                                          {vesselLabel(vessel)}
                                         </CommandItem>
                                       ))}
                                     </CommandGroup>
@@ -1032,7 +1041,7 @@ const OrderForm = ({
                           <div className="space-y-2">
                             <Label>Unit of Measure</Label>
                             <Input
-                              value={selectedProduct?.uom_name || ""}
+                              value={selectedProduct?.uom?.name || ""}
                               readOnly
                               placeholder="Auto-populated"
                               className="bg-muted"

@@ -1,4 +1,4 @@
-import { type PurchaseOrder } from "@/services/api";
+import { type PurchaseOrder } from "@/services";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
@@ -32,7 +32,6 @@ import {
   XCircle,
   FileText,
 } from "lucide-react";
-import { ordersApi } from "@/services/api/ordersApi";
 import PdfPreviewModal from "./PdfPreviewModal";
 import {
   Dialog,
@@ -91,10 +90,12 @@ const OrdersTable = ({
   const toggleExpanded = (id: number) =>
     setExpandedRows((prev) => ({ ...prev, [id]: !prev[id] }));
 
-  const handleOpenPdf = async (id: number) => {
-    setPdfLoadingId(id);
+  const handleOpenPdf = async (order: PurchaseOrder) => {
+    setPdfLoadingId(order.id);
     try {
-      const buffer = await ordersApi.generatePdf(id);
+      // Loaded on demand: jspdf and xlsx are large.
+      const { generateOrderPdf } = await import("@/lib/exportOrder");
+      const buffer = await generateOrderPdf(order);
       const blob = new Blob([buffer], { type: "application/pdf" });
       const url = URL.createObjectURL(blob);
       setPdfModalUrl(url);
@@ -114,17 +115,18 @@ const OrdersTable = ({
     }
   };
 
-  const handleDownloadExcel = async (id: number, name: string) => {
-    setExcelLoadingId(id);
+  const handleDownloadExcel = async (order: PurchaseOrder) => {
+    setExcelLoadingId(order.id);
     try {
-      const buffer = await ordersApi.generateExcel(id);
+      const { generateOrderExcel } = await import("@/lib/exportOrder");
+      const buffer = generateOrderExcel(order);
       const blob = new Blob([buffer], {
         type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `${name}.xlsx`;
+      a.download = `${order.name.replace(/[\\/:*?"<>|]+/g, "-")}.xlsx`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -191,6 +193,8 @@ const OrdersTable = ({
       o.state === "purchase" || o.state === "to approve" || o.state === "done",
   ).length;
   const cancelCount = orders.filter((o) => o.state === "cancel").length;
+  const deleteNeedsCancel =
+    deleteOrderState === "purchase" || deleteOrderState === "to approve";
 
   if (loading) {
     return (
@@ -201,7 +205,7 @@ const OrdersTable = ({
   }
 
   const renderOrderRow = (order: PurchaseOrder) => {
-    const linesAll = order.order_lines || [];
+    const linesAll = order.lines || [];
     const line = linesAll[0];
     const extraCount = Math.max(0, linesAll.length - 1);
     const isExpanded = !!expandedRows[order.id];
@@ -233,12 +237,12 @@ const OrdersTable = ({
               day: "numeric",
             })}
           </TableCell>
-          <TableCell>{order.company_name || "-"}</TableCell>
+          <TableCell>{order.company?.name || "-"}</TableCell>
           <TableCell className="font-medium">{order.name}</TableCell>
-          <TableCell>{line?.vessel_name || "-"}</TableCell>
-          <TableCell>{line?.region_name || "-"}</TableCell>
+          <TableCell>{line?.vessel?.name || "-"}</TableCell>
+          <TableCell>{line?.region?.name || "-"}</TableCell>
           <TableCell>
-            {line?.name || "-"}
+            {line?.product?.name || "-"}
             {extraCount > 0 && (
               <Badge variant="secondary" className="ml-2 text-xs">
                 +{extraCount} more
@@ -246,7 +250,7 @@ const OrdersTable = ({
             )}
           </TableCell>
           <TableCell>
-            {line ? `${line.product_qty} ${line.product_uom_name ?? ""}` : "-"}
+            {line ? `${line.product_qty} ${line.uom?.name ?? ""}` : "-"}
           </TableCell>
           <TableCell className="max-w-[200px] truncate">
             {order.notes ? stripHtml(order.notes) : "-"}
@@ -370,7 +374,7 @@ const OrdersTable = ({
                     variant="ghost"
                     size="icon"
                     className="h-8 w-8"
-                    onClick={() => handleOpenPdf(order.id)}
+                    onClick={() => handleOpenPdf(order)}
                     disabled={pdfLoadingId === order.id}
                   >
                     {pdfLoadingId === order.id ? (
@@ -388,7 +392,7 @@ const OrdersTable = ({
                     variant="ghost"
                     size="icon"
                     className="h-8 w-8"
-                    onClick={() => handleDownloadExcel(order.id, order.name)}
+                    onClick={() => handleDownloadExcel(order)}
                     disabled={excelLoadingId === order.id}
                   >
                     {excelLoadingId === order.id ? (
@@ -400,39 +404,41 @@ const OrdersTable = ({
                 </TooltipTrigger>
                 <TooltipContent>Download Excel</TooltipContent>
               </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-destructive hover:text-destructive"
-                    onClick={() =>
-                      openDeleteConfirm(order.id, order.name, order.state)
-                    }
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Delete</TooltipContent>
-              </Tooltip>
+              {onDelete && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-destructive hover:text-destructive"
+                      onClick={() =>
+                        openDeleteConfirm(order.id, order.name, order.state)
+                      }
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Delete</TooltipContent>
+                </Tooltip>
+              )}
             </div>
           </TableCell>
         </TableRow>
         {isExpanded &&
           linesAll.slice(1).map((extra, i) => (
             <TableRow
-              key={`${order.id}-line-${extra.id ?? i}`}
+              key={`${order.id}-line-${extra.id}`}
               className="bg-muted/30"
             >
               <TableCell />
               <TableCell colSpan={3} className="text-xs text-muted-foreground">
                 Line {i + 2}
               </TableCell>
-              <TableCell>{extra.vessel_name || "-"}</TableCell>
-              <TableCell>{extra.region_name || "-"}</TableCell>
-              <TableCell>{extra.name || "-"}</TableCell>
+              <TableCell>{extra.vessel?.name || "-"}</TableCell>
+              <TableCell>{extra.region?.name || "-"}</TableCell>
+              <TableCell>{extra.product?.name || "-"}</TableCell>
               <TableCell>
-                {`${extra.product_qty} ${extra.product_uom_name ?? ""}`}
+                {`${extra.product_qty} ${extra.uom?.name ?? ""}`}
               </TableCell>
               <TableCell />
               <TableCell />
@@ -611,10 +617,10 @@ const OrdersTable = ({
             <DialogHeader>
               <DialogTitle>Delete Order</DialogTitle>
               <DialogDescription>
-                {deleteOrderState !== "draft" ? (
+                {deleteNeedsCancel ? (
                   <>
-                    This order must be set to draft before it can be deleted.
-                    Would you like to cancel and delete{" "}
+                    This order is confirmed, so it must be cancelled before it can be
+                    deleted. Would you like to cancel and delete{" "}
                     <strong>{deleteOrderName}</strong>?
                   </>
                 ) : (
@@ -640,7 +646,7 @@ const OrdersTable = ({
               >
                 Cancel
               </Button>
-              {deleteOrderState !== "draft" ? (
+              {deleteNeedsCancel ? (
                 <Button
                   variant="destructive"
                   onClick={() => handleConfirmDelete(true)}

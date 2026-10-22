@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { ordersApi, type Vessel } from "@/services/api";
+import { lookupsService, type Vessel } from "@/services";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -27,8 +27,7 @@ const VesselApiGate = () => {
       try {
         setLoading(true);
         setError(null);
-        const response = await ordersApi.getVessels();
-        setVessels(response.shipping_vessels || []);
+        setVessels(await lookupsService.getVessels());
       } catch (err) {
         setError(
           err instanceof Error ? err.message : "Failed to fetch vessels",
@@ -132,10 +131,10 @@ const VesselApiGate = () => {
                   {pageItems.map((v) => (
                     <TableRow key={v.id}>
                       <TableCell className="font-medium">{v.name}</TableCell>
-                      <TableCell>{v.type_name || "-"}</TableCell>
-                      <TableCell>{v.operator_name || "-"}</TableCell>
-                      <TableCell>{v.owner_name || "-"}</TableCell>
-                      <TableCell>{v.bussines_unit_id_name || "-"}</TableCell>
+                      <TableCell>{v.type?.name || "-"}</TableCell>
+                      <TableCell>{v.operator?.name || "-"}</TableCell>
+                      <TableCell>{v.owner?.name || "-"}</TableCell>
+                      <TableCell>{v.business_unit?.name || "-"}</TableCell>
                       <TableCell>
                         {v.gross_tonage || v.gross_tonage === 0
                           ? v.gross_tonage

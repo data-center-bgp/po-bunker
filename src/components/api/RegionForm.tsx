@@ -1,5 +1,5 @@
 import { useState, useEffect, type FormEvent } from "react";
-import { ordersApi, type Region } from "@/services/api";
+import { regionsService, type Region, type RegionInput } from "@/services";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -73,8 +73,7 @@ const RegionForm = ({
     setFormData({
       name: region.name || "",
       code: region.code || "",
-      description:
-        typeof region.description === "string" ? region.description : "",
+      description: region.description || "",
       active: region.active !== false,
       level_region: region.level_region || "",
       bps_code:
@@ -103,7 +102,7 @@ const RegionForm = ({
     setError(null);
 
     try {
-      const payload = {
+      const payload: RegionInput = {
         name: formData.name.trim(),
         code: formData.code.trim() || null,
         description: formData.description.trim() || null,
@@ -120,9 +119,9 @@ const RegionForm = ({
       };
 
       if (isEditing && region) {
-        await ordersApi.updateRegion(region.id, payload);
+        await regionsService.updateRegion(region.id, payload);
       } else {
-        await ordersApi.createRegion(payload);
+        await regionsService.createRegion(payload);
       }
       onSuccess();
     } catch (err) {

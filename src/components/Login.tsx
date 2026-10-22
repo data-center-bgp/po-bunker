@@ -1,5 +1,4 @@
 import { useState, type FormEvent } from "react";
-import { authApi } from "@/services/api";
 import { useAuth } from "@/contexts/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -96,12 +95,7 @@ const Login = () => {
     setErrors({});
 
     try {
-      const response = await authApi.login({
-        email: formData.email,
-        password: formData.password,
-      });
-
-      login(response.access_token, response.user_id, response.login);
+      await login(formData.email, formData.password);
     } catch (error) {
       console.error("Login error:", error);
       setErrors({

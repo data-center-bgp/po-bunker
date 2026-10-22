@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
-import { ordersApi, type Company } from "@/services/api";
+import { companiesService, type Company } from "@/services";
+import { useAuth } from "@/contexts/useAuth";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,6 +25,7 @@ import CompanyForm from "@/components/api/CompanyForm";
 const PAGE_SIZE = 20;
 
 const CompanyPage = () => {
+  const { canWrite } = useAuth();
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -37,8 +39,7 @@ const CompanyPage = () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await ordersApi.getCompanies();
-      setCompanies(response.companies || []);
+      setCompanies(await companiesService.getCompanies());
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Failed to fetch companies",
@@ -105,10 +106,12 @@ const CompanyPage = () => {
             Browse, search, and manage companies.
           </p>
         </div>
-        <Button onClick={handleAddNew}>
-          <Plus className="h-4 w-4" />
-          Add New Company
-        </Button>
+        {canWrite && (
+          <Button onClick={handleAddNew}>
+            <Plus className="h-4 w-4" />
+            Add New Company
+          </Button>
+        )}
       </div>
 
       {/* Search */}
@@ -172,9 +175,9 @@ const CompanyPage = () => {
                       <TableCell className="font-medium">{c.name}</TableCell>
                       <TableCell>{c.code_company || "-"}</TableCell>
                       <TableCell>{c.code_company_general || "-"}</TableCell>
-                      <TableCell>{c.bussines_unit_name || "-"}</TableCell>
-                      <TableCell>{c.region_name || "-"}</TableCell>
-                      <TableCell>{c.currency_name || "-"}</TableCell>
+                      <TableCell>{c.business_unit?.name || "-"}</TableCell>
+                      <TableCell>{c.region?.name || "-"}</TableCell>
+                      <TableCell>{c.currency || "-"}</TableCell>
                       <TableCell>
                         <Badge
                           variant={c.active ? "success" : "secondary"}
@@ -183,14 +186,16 @@ const CompanyPage = () => {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleEdit(c)}
-                          title="Edit"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
+                        {canWrite && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleEdit(c)}
+                            title="Edit"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}

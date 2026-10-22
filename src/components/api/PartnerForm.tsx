@@ -1,10 +1,11 @@
 import { useState, useEffect, type FormEvent } from "react";
 import {
-  ordersApi,
+  lookupsService,
+  partnersService,
   type Partner,
+  type PartnerInput,
   type Vessel,
-  type CreatePartnerRequest,
-} from "@/services/api";
+} from "@/services";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -113,8 +114,8 @@ const PartnerForm = ({
       zip: partner.zip ? String(partner.zip) : "",
       vessel_id: partner.vessel_id != null ? String(partner.vessel_id) : "",
       parent_id: partner.parent_id != null ? String(partner.parent_id) : "",
-      customer: (partner.customer_rank ?? 0) > 0,
-      supplier: (partner.supplier_rank ?? 0) > 0,
+      customer: partner.is_customer,
+      supplier: partner.is_supplier,
       active: partner.active !== false,
     });
     setError(null);
@@ -123,10 +124,10 @@ const PartnerForm = ({
   useEffect(() => {
     if (!isOpen) return;
     let cancelled = false;
-    ordersApi
+    lookupsService
       .getVessels()
       .then((res) => {
-        if (!cancelled) setVessels(res.shipping_vessels || []);
+        if (!cancelled) setVessels(res);
       })
       .catch(() => {
         if (!cancelled) setVessels([]);
@@ -155,33 +156,31 @@ const PartnerForm = ({
     setError(null);
 
     try {
-      const payload: CreatePartnerRequest = {
+      const text = (value: string) => value.trim() || null;
+      const payload: PartnerInput = {
         name: formData.name.trim(),
         active: formData.active,
+        type: formData.type.trim() || "contact",
+        is_company: formData.is_company,
+        is_customer: formData.customer,
+        is_supplier: formData.supplier,
+        email: text(formData.email),
+        phone: text(formData.phone),
+        mobile: text(formData.mobile),
+        website: text(formData.website),
+        vat: text(formData.vat),
+        street: text(formData.street),
+        street2: text(formData.street2),
+        city: text(formData.city),
+        zip: text(formData.zip),
+        vessel_id: formData.vessel_id !== "" ? Number(formData.vessel_id) : null,
+        parent_id: formData.parent_id !== "" ? Number(formData.parent_id) : null,
       };
 
-      if (formData.type.trim()) payload.type = formData.type.trim();
-      payload.is_company = formData.is_company;
-      if (formData.email.trim()) payload.email = formData.email.trim();
-      if (formData.phone.trim()) payload.phone = formData.phone.trim();
-      if (formData.mobile.trim()) payload.mobile = formData.mobile.trim();
-      if (formData.website.trim()) payload.website = formData.website.trim();
-      if (formData.vat.trim()) payload.vat = formData.vat.trim();
-      if (formData.street.trim()) payload.street = formData.street.trim();
-      if (formData.street2.trim()) payload.street2 = formData.street2.trim();
-      if (formData.city.trim()) payload.city = formData.city.trim();
-      if (formData.zip.trim()) payload.zip = formData.zip.trim();
-      if (formData.vessel_id !== "")
-        payload.vessel_id = Number(formData.vessel_id);
-      if (formData.parent_id !== "")
-        payload.parent_id = Number(formData.parent_id);
-      if (formData.customer) payload.customer = true;
-      if (formData.supplier) payload.supplier = true;
-
       if (isEditing && partner) {
-        await ordersApi.updatePartner(partner.id, payload);
+        await partnersService.updatePartner(partner.id, payload);
       } else {
-        await ordersApi.createPartner(payload);
+        await partnersService.createPartner(payload);
       }
       onSuccess();
     } catch (err) {
@@ -409,7 +408,7 @@ const PartnerForm = ({
                       <SelectItem value={NONE_VALUE}>None</SelectItem>
                       {parentOptions.map((p) => (
                         <SelectItem key={p.id} value={String(p.id)}>
-                          {p.display_name || p.name}
+                          {p.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
