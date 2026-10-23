@@ -814,7 +814,7 @@ const OrderForm = ({
                                       {vessels.map((vessel) => (
                                         <CommandItem
                                           key={vessel.id}
-                                          value={vesselLabel(vessel)}
+                                          value={`${vesselLabel(vessel)} ${vessel.code ?? ""}`}
                                           onSelect={() => {
                                             updateLine(idx, {
                                               vesselId:

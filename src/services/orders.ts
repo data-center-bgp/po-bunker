@@ -15,7 +15,7 @@ const ORDER_SELECT = `
   lines:purchase_order_lines(
     *,
     product:products(id,name,default_code),
-    vessel:vessels(id,name),
+    vessel:vessels(id,name,code),
     region:regions(id,name),
     uom:uoms(id,name),
     code_budget:code_budgets(id,name),

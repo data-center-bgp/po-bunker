@@ -43,7 +43,10 @@ const VesselApiGate = () => {
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return vessels;
-    return vessels.filter((v) => v.name?.toLowerCase().includes(q));
+    return vessels.filter(
+      (v) =>
+        v.name?.toLowerCase().includes(q) || v.code?.toLowerCase().includes(q),
+    );
   }, [vessels, query]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
@@ -76,7 +79,7 @@ const VesselApiGate = () => {
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           type="text"
-          placeholder="Search by vessel name..."
+          placeholder="Search by vessel name or code..."
           value={query}
           onChange={(e) => handleQueryChange(e.target.value)}
           className="pl-9"
@@ -116,6 +119,7 @@ const VesselApiGate = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead>Code</TableHead>
                     <TableHead>Name</TableHead>
                     <TableHead>Type</TableHead>
                     <TableHead>Operator</TableHead>
@@ -130,6 +134,7 @@ const VesselApiGate = () => {
                 <TableBody>
                   {pageItems.map((v) => (
                     <TableRow key={v.id}>
+                      <TableCell>{v.code || "-"}</TableCell>
                       <TableCell className="font-medium">{v.name}</TableCell>
                       <TableCell>{v.type?.name || "-"}</TableCell>
                       <TableCell>{v.operator?.name || "-"}</TableCell>

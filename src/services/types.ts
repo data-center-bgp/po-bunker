@@ -141,6 +141,8 @@ export interface PartnerInput {
 export interface Vessel {
   id: number;
   name: string;
+  /** Short code printed in the Vessel column of the PO PDF/Excel. */
+  code: string | null;
   type_id: number | null;
   gross_tonage: number | null;
   call_sign: string | null;
@@ -193,7 +195,7 @@ export interface OrderLine {
   requested_by: string | null;
   priority: Priority | null;
   product: { id: number; name: string; default_code: string | null } | null;
-  vessel: Ref | null;
+  vessel: { id: number; name: string; code: string | null } | null;
   region: Ref | null;
   uom: Ref | null;
   code_budget: Ref | null;

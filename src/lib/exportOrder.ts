@@ -58,6 +58,7 @@ export const generateOrderExcel = (order: PurchaseOrder): ArrayBuffer => {
       "Product",
       "Code",
       "Vessel",
+      "Vessel Name",
       "Region",
       "Project",
       "Code Budget",
@@ -71,6 +72,7 @@ export const generateOrderExcel = (order: PurchaseOrder): ArrayBuffer => {
       i + 1,
       l.product?.name ?? "",
       l.product?.default_code ?? "",
+      l.vessel?.code || l.vessel?.name || "",
       l.vessel?.name ?? "",
       l.region?.name ?? "",
       l.project ?? "",
@@ -82,7 +84,7 @@ export const generateOrderExcel = (order: PurchaseOrder): ArrayBuffer => {
       l.price_subtotal,
     ]),
     [],
-    ["", "", "", "", "", "", "", "", "", "", "Total", order.amount_total],
+    ["", "", "", "", "", "", "", "", "", "", "", "Total", order.amount_total],
   ];
 
   const notes = htmlToText(order.notes || "");
@@ -92,6 +94,7 @@ export const generateOrderExcel = (order: PurchaseOrder): ArrayBuffer => {
   sheet["!cols"] = [
     { wch: 12 },
     { wch: 32 },
+    { wch: 14 },
     { wch: 14 },
     { wch: 22 },
     { wch: 18 },
@@ -176,7 +179,7 @@ export const generateOrderPdf = async (
     body: order.lines.map((l, i) => [
       i + 1,
       l.product?.name ?? "",
-      l.vessel?.name ?? "",
+      l.vessel?.code || l.vessel?.name || "",
       l.region?.name ?? "",
       l.project ?? "",
       l.priority ? l.priority.charAt(0).toUpperCase() : "",

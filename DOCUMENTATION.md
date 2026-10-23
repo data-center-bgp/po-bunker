@@ -355,7 +355,7 @@ The authoritative definition is in `supabase/migrations/0001_schema.sql`. The sh
 | Field                | Type                                              | Description                         |
 | -------------------- | ------------------------------------------------- | ----------------------------------- |
 | `id`                 | bigint                                            | Unique identifier                   |
-| `name`               | text                                              | PO number, `PO/YYYY/NNNN`, assigned on create |
+| `name`               | text                                              | PO number, assigned on create (see below) |
 | `company_id`         | bigint → `companies`                              | Issuing company                     |
 | `partner_id`         | bigint → `partners`                               | Vendor/supplier                     |
 | `order_type`         | `bunker_fuel` / `bunker_water` / `logistic`       | Type of order                       |

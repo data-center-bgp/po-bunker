@@ -270,7 +270,12 @@ const CompanyForm = ({
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="company-code-general">General Code</Label>
+                  <Label htmlFor="company-code-general">
+                    General Code{" "}
+                    <span className="font-normal text-muted-foreground">
+                      (used in bunker PO numbers)
+                    </span>
+                  </Label>
                   <Input
                     id="company-code-general"
                     value={formData.code_company_general}

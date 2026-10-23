@@ -59,7 +59,10 @@ Clients cannot INSERT/UPDATE orders or order lines directly. They call:
 | `set_purchase_order_draft(p_id)`            | to approve / purchase / cancel -> draft, clears approval |
 
 Deleting an order is a plain `DELETE`, allowed only for draft or cancelled
-orders. Order numbers are `PO/YYYY/NNNN` (per year, assigned on create).
+orders. Bunker order numbers follow the old system: `NNN AC/<company general code>-OPS/BBM|AIR/<roman month>-<year>`,
+e.g. `015 AC/IGE-OPS/BBM/III-2025`. The sequence restarts every month and is separate for fuel (`BBM`) and
+fresh water (`AIR`). The company must have a General Code or the order cannot be created. Logistic orders
+keep `PO/YYYY/NNNN` until their real format is known (migration 0004).
 Totals are recomputed from the lines; tax is 0 for now.
 
 ## Importing master data
@@ -70,6 +73,6 @@ resolve, using the ids Postgres assigns (look them up after each import):
 
 1. `business_units`, `vessel_types`, `code_budgets`
 2. `regions` (parents before children)
-3. `companies`, `partners`
+3. `companies` (fill `code_company_general`, needed for PO numbers), `partners`
 4. `products` (needs category / uom / code budget ids)
-5. `vessels` (needs vessel type / operator / owner / business unit ids)
+5. `vessels` (needs vessel type / business unit ids; `operator_id` and `owner_id` are company ids; `code` is printed on the PO)
