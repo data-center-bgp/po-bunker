@@ -54,16 +54,37 @@ Clients cannot INSERT/UPDATE orders or order lines directly. They call:
 | RPC                                         | Does                                                    |
 | ------------------------------------------- | ------------------------------------------------------- |
 | `save_purchase_order(p_id, p_header, p_lines)` | create (`p_id` null) or edit a draft; lines saved atomically |
-| `confirm_purchase_order(p_id)`              | draft -> purchase, stamps approval                      |
+| `confirm_purchase_order(p_id)`              | draft -> purchase (sets the confirm date; not an approval) |
+| `approve_purchase_order(p_id, p_level)`     | confirmed order: `first`/`second`/`third` approval, copies the approver's signature |
+| `set_line_status(p_line_id, p_status)`      | line status on a draft or confirmed order               |
+| `set_my_signature(p_path)`                  | the caller's own signature path (profiles are admin-write) |
 | `cancel_purchase_order(p_id)`               | draft / to approve / purchase -> cancel                 |
-| `set_purchase_order_draft(p_id)`            | to approve / purchase / cancel -> draft, clears approval |
+| `set_purchase_order_draft(p_id)`            | to approve / purchase / cancel -> draft, clears all approvals and signatures |
 
 Deleting an order is a plain `DELETE`, allowed only for draft or cancelled
 orders. Bunker order numbers follow the old system: `NNN AC/<company general code>-OPS/BBM|AIR/<roman month>-<year>`,
 e.g. `015 AC/IGE-OPS/BBM/III-2025`. The sequence restarts every month and is separate for fuel (`BBM`) and
 fresh water (`AIR`). The company must have a General Code or the order cannot be created. Logistic orders
 keep `PO/YYYY/NNNN` until their real format is known (migration 0004).
-Totals are recomputed from the lines; tax is 0 for now.
+Totals are recomputed in the database (migration 0005): `untaxed = active lines - discount`,
+`tax = untaxed * VAT% / 100`, `total = untaxed + tax`. Lines with status `cancel` are excluded.
+
+## Approvals, signatures, logos, remarks (migration 0005)
+
+- Private storage bucket `po_bunker_assets`: `signatures/<user id>/<timestamp>.png` (each user writes only their own folder)
+  and `logos/<company id>/<timestamp>.png` (admin/staff). Any active PO Bunker user can read. Policies are named
+  `PO Bunker ...` and scoped to this bucket, so other apps on the shared project are unaffected.
+- Users upload their own signature in the app (user menu, My signature). Approving copies the path onto the order.
+- Who may approve which level is set by an admin in SQL (admins may approve any level; there is no Users screen yet):
+
+  ```sql
+  update po_bunker.profiles set approval_levels = '{first}'          where email = 'logadmin@example.com';
+  update po_bunker.profiles set approval_levels = '{second}'         where email = 'corlog@example.com';
+  update po_bunker.profiles set approval_levels = '{third}'          where email = 'pic@example.com';
+  ```
+
+  Levels: `first` = Corporate Logistic Admin, `second` = Corporate Logistic, `third` = Business Unit PIC.
+- Company logos are uploaded on the Companies page. Remarks live in `purchase_order_remarks` and can change in any order state.
 
 ## Importing master data
 
