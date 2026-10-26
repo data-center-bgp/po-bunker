@@ -217,6 +217,11 @@ The **Orders** page lists all purchase orders in a paginated table.
 | **Order Type**       | Type/category of the PO                           | Yes      |
 | **Order Date**       | Date and time of the order                        | Yes      |
 | **Notes**            | Internal notes (rich text editor with formatting) | No       |
+| **Vendor Document**  | Quotation or Invoice (printed as "as per your company's ...") | No |
+| **Vendor Document No. / Date** | Number and date of the vendor's document | No   |
+| **Bunker Date & Time** | When the bunkering is planned                   | No       |
+| **Discount (Rp)**    | Discount amount taken off the lines total          | No       |
+| **VAT (%)**          | VAT percentage applied after the discount          | No       |
 
 #### Step B — Add Order Line Items
 
@@ -235,8 +240,9 @@ Each order must have at least one line item. Click **"Add Line"** to add more ro
 | **Category**     | Product division/category                        | Auto-filled from product              |
 | **Code Budget**  | Budget allocation code (searchable, overridable) | Auto-filled from product              |
 | **Unit**         | Unit of Measure                                  | Auto-filled from product              |
+| **Line Status**  | On progress / Hold / Cancelled / Closed          | Cancelled lines leave the totals and print struck through |
 
-- The **subtotal** per line and the **grand total** are calculated and displayed automatically.
+- The **subtotal** per line and the totals are calculated automatically: lines total (active lines) minus the discount, plus VAT on the remainder.
 - To remove a line, click the **trash icon** on that row.
 
 3. Click **"Create Order"** to submit. The new order appears in the table with **Draft** status.
@@ -249,9 +255,11 @@ Click the **Eye icon** (`👁`) on any order row to open the **View Order** moda
 
 The modal displays:
 
-- **Order header** — reference number, vendor, company, order type, date, status badge, creation date, approval chain (first/second/third approver with dates)
-- **Financial summary** — subtotal, tax, discount, and total amount
-- **Order lines table** — product name, code, vessel, region, quantity, UoM, unit price, subtotal
+- **Order header** — reference number, vendor, company, order type, dates (order, confirmed, vendor document, bunker), status badge
+- **Financial summary** — lines total, discount, VAT, and total amount
+- **Order lines table** — product, vessel, quantity, unit price, subtotal and line status (changeable on draft and confirmed orders)
+- **Approvals** — the three signature boxes (see 5.10)
+- **Remarks** — red/blue notes (see 5.10)
 - **Notes** — rendered rich-text notes (sanitized against XSS)
 - **Action buttons** — Confirm, Cancel, Set to Draft, Delete (depending on current state)
 
@@ -276,7 +284,7 @@ Orders follow a defined lifecycle. Status transitions are triggered via the acti
 
 | Action           | Button        | From State             | To State               |
 | ---------------- | ------------- | ---------------------- | ---------------------- |
-| **Confirm**      | ✅ Check icon | Draft                  | Confirmed (`purchase`) |
+| **Confirm**      | ✅ Check icon | Draft                  | Confirmed (`purchase`). Confirming is not an approval. |
 | **Cancel**       | ✕ icon        | Draft or Confirmed     | Cancelled              |
 | **Set to Draft** | ↩ Reset icon  | Confirmed or Cancelled | Draft                  |
 
@@ -292,7 +300,10 @@ Status badges in the table are color-coded:
 
 ### 5.8 Exporting Orders
 
-Two export formats are available per order from the **action buttons** in the table:
+Two export formats are available per order from the **action buttons** in the table. Both reproduce the bilingual
+"ORDER PEMBELIAN / PURCHASE ORDER" form of the old system (bunker layout): company logo, vendor block, line table,
+remarks, total / discount / VAT / grand total, amount in words (Terbilang), payment options and the three signature boxes.
+Cancelled lines are struck through. The company logo comes from the company record (fallback: the group logo).
 
 #### PDF Preview
 
@@ -307,6 +318,22 @@ Two export formats are available per order from the **action buttons** in the ta
 1. Click the **Download icon** on the order row.
 2. The `.xlsx` file is generated and **automatically downloaded** to your device.
 3. The filename follows the pattern: `<OrderName>.xlsx`.
+
+---
+
+### 5.10 Approvals, signatures and remarks
+
+**Signatures.** Admins and staff upload their signature once from the user menu (**My signature**, PNG or JPG under 1 MB).
+It is stored privately and copied onto a PO at the moment you approve it, so changing your signature later never alters
+POs you already approved.
+
+**Approvals.** After an order is **Confirmed**, three people approve it in any order: *Corporate Logistic Admin*,
+*Corporate Logistic* and *Business Unit PIC*. The **Approve** button appears in the View Order dialog only for users who
+may approve that level and have a signature. Setting the order back to Draft clears all approvals.
+An admin sets who may approve which level (see `supabase/README.md`).
+
+**Remarks.** Admins and staff can add, and delete, colored notes (red or blue) on an order in any state, for example delivery
+updates. They print under the order lines.
 
 ---
 
@@ -366,7 +393,11 @@ The authoritative definition is in `supabase/migrations/0001_schema.sql`. The sh
 | `amount_tax`         | numeric                                           | 0 for now                           |
 | `amount_total`       | numeric                                           | untaxed + tax - discount            |
 | `notes`              | text                                              | HTML-formatted notes                |
-| `first_approved_by`  | uuid → `profiles`                                 | Who confirmed it                    |
+| `option_order`, `partner_ref`, `date_vendor` | text / text / timestamptz        | Vendor quotation/invoice, its number and date |
+| `date_bunker`        | timestamptz                                       | Planned bunker date                 |
+| `tax_percent`        | numeric (0-100)                                   | VAT %                               |
+| `amount_discount`    | numeric (>= 0)                                    | Discount amount (entered by the user) |
+| `first/second/third_approved_by`, `_at`, `_signature_path` | uuid / timestamptz / text | Three-level approval with the signature snapshot |
 
 ### Order Line (`po_bunker.purchase_order_lines`)
 
@@ -384,6 +415,9 @@ The authoritative definition is in `supabase/migrations/0001_schema.sql`. The sh
 | `project`        | text                            | Project name or reference      |
 | `requested_by`   | uuid → `profiles`               | Requesting user (optional)     |
 | `priority`       | `low` / `medium` / `high`       | Line priority (optional)       |
+| `status_list`    | `onprogress` / `hold` / `cancel` / `close` | Cancelled lines are excluded from totals |
+
+`po_bunker.purchase_order_remarks` holds the colored notes (`order_id`, `remark_date`, `color` merah/biru, `remark`).
 
 ---
 
@@ -402,7 +436,10 @@ Orders and lines cannot be inserted or updated directly. The app calls database 
 | RPC                                            | Description                                                   |
 | ---------------------------------------------- | ------------------------------------------------------------- |
 | `save_purchase_order(p_id, p_header, p_lines)` | Create (`p_id` null) or edit a draft; header and lines atomically |
-| `confirm_purchase_order(p_id)`                 | draft → purchase                                              |
+| `confirm_purchase_order(p_id)`                 | draft → purchase (not an approval)                            |
+| `approve_purchase_order(p_id, p_level)`        | confirmed order: `first` / `second` / `third` approval, copies the approver's signature |
+| `set_line_status(p_line_id, p_status)`         | change a line's status on a draft or confirmed order          |
+| `set_my_signature(p_path)`                     | save the caller's own signature path                          |
 | `cancel_purchase_order(p_id)`                  | draft / to approve / purchase → cancel                        |
 | `set_purchase_order_draft(p_id)`               | to approve / purchase / cancel → draft                        |
 
@@ -414,7 +451,7 @@ Companies, partners and regions can be created and edited from the app. Vessels,
 
 ### Export
 
-PDF (jsPDF) and Excel (SheetJS) are generated in the browser from the order data (`src/lib/exportOrder.ts`).
+PDF (jsPDF) and Excel (ExcelJS) are generated in the browser from the order data. `src/lib/orderPrintData.ts` builds the shared print model, `exportOrderPdf.ts` and `exportOrderExcel.ts` draw the form.
 
 ---
 

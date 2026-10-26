@@ -1,10 +1,15 @@
 import { useEffect, useState } from "react";
 import DOMPurify from "dompurify";
 import {
+  LINE_STATUS_LABELS,
   ordersService,
   ORDER_TYPE_LABELS,
+  type LineStatus,
   type PurchaseOrder,
 } from "@/services";
+import { useAuth } from "@/contexts/useAuth";
+import OrderApprovals from "@/components/orders/OrderApprovals";
+import OrderRemarks from "@/components/orders/OrderRemarks";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -69,6 +74,7 @@ const ViewOrderModal = ({
   onSetDraft,
   onRefreshList,
 }: ViewOrderModalProps) => {
+  const { canWrite } = useAuth();
   const [order, setOrder] = useState<PurchaseOrder | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -123,7 +129,7 @@ const ViewOrderModal = ({
     const statusMap: Record<string, string> = {
       draft: "Draft",
       "to approve": "Pending",
-      purchase: "Approved",
+      purchase: "Confirmed",
       done: "Completed",
       cancel: "Cancelled",
     };
@@ -153,6 +159,25 @@ const ViewOrderModal = ({
       );
     } finally {
       setActionLoading(null);
+    }
+  };
+
+  // Reload the open order and the list behind the dialog.
+  const reload = async () => {
+    if (!order) return;
+    await fetchOrder(order.id);
+    onRefreshList?.();
+  };
+
+  const handleLineStatus = async (lineId: number, status: LineStatus) => {
+    setActionError(null);
+    try {
+      await ordersService.setLineStatus(lineId, status);
+      await reload();
+    } catch (err) {
+      setActionError(
+        err instanceof Error ? err.message : "Failed to change line status",
+      );
     }
   };
 
@@ -282,16 +307,39 @@ const ViewOrderModal = ({
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-muted-foreground">Approved</Label>
+                    <Label className="text-muted-foreground">Confirmed</Label>
                     <Input
                       value={
-                        order.date_approve
-                          ? `${formatDate(order.date_approve)}${
-                              order.first_approver
-                                ? ` by ${order.first_approver.name}`
-                                : ""
-                            }`
-                          : "-"
+                        order.date_approve ? formatDate(order.date_approve) : "-"
+                      }
+                      readOnly
+                      className="bg-muted"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-muted-foreground">
+                      Vendor {order.option_order === "invoice" ? "Invoice" : "Quotation"}
+                    </Label>
+                    <Input
+                      value={
+                        [
+                          order.partner_ref,
+                          order.date_vendor
+                            ? `(${new Date(order.date_vendor).toLocaleDateString("en-GB")})`
+                            : "",
+                        ]
+                          .filter(Boolean)
+                          .join(" ") || "-"
+                      }
+                      readOnly
+                      className="bg-muted"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-muted-foreground">Bunker Date</Label>
+                    <Input
+                      value={
+                        order.date_bunker ? formatDate(order.date_bunker) : "-"
                       }
                       readOnly
                       className="bg-muted"
@@ -317,12 +365,20 @@ const ViewOrderModal = ({
                         <TableHead className="text-right">Quantity</TableHead>
                         <TableHead className="text-right">Unit Price</TableHead>
                         <TableHead className="text-right">Subtotal</TableHead>
+                        <TableHead>Status</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {order.lines && order.lines.length > 0 ? (
                         order.lines.map((line) => (
-                          <TableRow key={line.id}>
+                          <TableRow
+                            key={line.id}
+                            className={
+                              line.status_list === "cancel"
+                                ? "text-muted-foreground line-through"
+                                : undefined
+                            }
+                          >
                             <TableCell>{line.product?.name || "-"}</TableCell>
                             <TableCell>
                               <div className="flex items-center gap-2">
@@ -339,12 +395,38 @@ const ViewOrderModal = ({
                             <TableCell className="text-right">
                               {formatCurrency(line.price_subtotal || 0)}
                             </TableCell>
+                            <TableCell className="no-underline">
+                              {canWrite &&
+                              (order.state === "draft" ||
+                                order.state === "purchase") ? (
+                                <select
+                                  className="h-8 rounded-md border border-input bg-background px-2 text-xs"
+                                  value={line.status_list}
+                                  onChange={(e) =>
+                                    handleLineStatus(
+                                      line.id,
+                                      e.target.value as LineStatus,
+                                    )
+                                  }
+                                >
+                                  {(
+                                    Object.keys(LINE_STATUS_LABELS) as LineStatus[]
+                                  ).map((key) => (
+                                    <option key={key} value={key}>
+                                      {LINE_STATUS_LABELS[key]}
+                                    </option>
+                                  ))}
+                                </select>
+                              ) : (
+                                LINE_STATUS_LABELS[line.status_list]
+                              )}
+                            </TableCell>
                           </TableRow>
                         ))
                       ) : (
                         <TableRow>
                           <TableCell
-                            colSpan={5}
+                            colSpan={6}
                             className="h-24 text-center text-muted-foreground"
                           >
                             No order items found.
@@ -354,13 +436,41 @@ const ViewOrderModal = ({
                     </TableBody>
                   </Table>
                 </div>
-                <div className="mt-3 flex justify-end text-sm text-muted-foreground">
-                  Total:{" "}
-                  <span className="ml-2 text-base font-semibold text-foreground">
-                    {formatCurrency(order.amount_total || 0)}
-                  </span>
+                <div className="mt-3 flex flex-col items-end gap-1 text-sm text-muted-foreground">
+                  <div>
+                    Lines total:{" "}
+                    <span className="text-foreground">
+                      {formatCurrency(
+                        (order.amount_untaxed || 0) + (order.amount_discount || 0),
+                      )}
+                    </span>
+                  </div>
+                  <div>
+                    Discount:{" "}
+                    <span className="text-foreground">
+                      - {formatCurrency(order.amount_discount || 0)}
+                    </span>
+                  </div>
+                  <div>
+                    VAT {order.tax_percent || 0}%:{" "}
+                    <span className="text-foreground">
+                      {formatCurrency(order.amount_tax || 0)}
+                    </span>
+                  </div>
+                  <div>
+                    Total:{" "}
+                    <span className="ml-1 text-base font-semibold text-foreground">
+                      {formatCurrency(order.amount_total || 0)}
+                    </span>
+                  </div>
                 </div>
               </div>
+
+              <Separator />
+              <OrderApprovals order={order} onChanged={reload} />
+
+              <Separator />
+              <OrderRemarks order={order} onChanged={reload} />
 
               {/* Notes */}
               {order.notes && (

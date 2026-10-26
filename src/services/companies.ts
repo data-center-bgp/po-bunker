@@ -16,10 +16,27 @@ export const companiesService = {
       "Failed to fetch companies",
     ),
 
-  createCompany: async (input: CompanyInput): Promise<void> => {
-    unwrap(
-      await supabase.from("companies").insert(input).select("id").single(),
+  createCompany: async (input: CompanyInput): Promise<number> => {
+    const row = unwrap(
+      await supabase
+        .from("companies")
+        .insert(input)
+        .select("id")
+        .single<{ id: number }>(),
       "Failed to create company",
+    );
+    return row.id;
+  },
+
+  setLogo: async (id: number, logoPath: string): Promise<void> => {
+    unwrap(
+      await supabase
+        .from("companies")
+        .update({ logo_path: logoPath })
+        .eq("id", id)
+        .select("id")
+        .single(),
+      "Failed to save the company logo",
     );
   },
 

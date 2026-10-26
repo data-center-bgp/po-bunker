@@ -2,6 +2,7 @@ import { useState, useEffect, type FormEvent } from "react";
 import {
   companiesService,
   regionsService,
+  storageService,
   type BusinessUnit,
   type Company,
   type CompanyInput,
@@ -26,6 +27,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { AlertCircle, Loader2, Building } from "lucide-react";
+import { useSignedUrl } from "@/lib/useSignedUrl";
 
 const NONE_VALUE = "__none__";
 
@@ -83,6 +85,8 @@ const CompanyForm = ({
   const [error, setError] = useState<string | null>(null);
   const [regions, setRegions] = useState<Region[]>([]);
   const [businessUnits, setBusinessUnits] = useState<BusinessUnit[]>([]);
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const currentLogoUrl = useSignedUrl(company?.logo_path);
 
   const isEditing = !!company && !!company.id;
 
@@ -183,11 +187,17 @@ const CompanyForm = ({
             : null,
       };
 
+      let companyId = company?.id;
       if (isEditing && company) {
         await companiesService.updateCompany(company.id, payload);
       } else {
-        await companiesService.createCompany(payload);
+        companyId = await companiesService.createCompany(payload);
       }
+      if (logoFile && companyId) {
+        const path = await storageService.uploadCompanyLogo(companyId, logoFile);
+        await companiesService.setLogo(companyId, path);
+      }
+      setLogoFile(null);
       onSuccess();
     } catch (err) {
       setError(
@@ -207,6 +217,7 @@ const CompanyForm = ({
   };
 
   const handleCancel = () => {
+    setLogoFile(null);
     setFormData(initialData);
     setError(null);
     onCancel();
@@ -440,6 +451,31 @@ const CompanyForm = ({
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+
+              {/* Logo */}
+              <div className="space-y-2">
+                <Label htmlFor="company-logo">
+                  Logo{" "}
+                  <span className="font-normal text-muted-foreground">
+                    (printed on the PO, PNG or JPG under 1 MB)
+                  </span>
+                </Label>
+                {currentLogoUrl && !logoFile && (
+                  <img
+                    src={currentLogoUrl}
+                    alt="Current logo"
+                    className="h-12 object-contain"
+                  />
+                )}
+                <input
+                  id="company-logo"
+                  type="file"
+                  accept="image/png,image/jpeg"
+                  className="block text-sm"
+                  disabled={loading}
+                  onChange={(e) => setLogoFile(e.target.files?.[0] ?? null)}
+                />
               </div>
 
               {/* Active */}

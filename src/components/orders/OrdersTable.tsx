@@ -94,7 +94,7 @@ const OrdersTable = ({
     setPdfLoadingId(order.id);
     try {
       // Loaded on demand: jspdf and xlsx are large.
-      const { generateOrderPdf } = await import("@/lib/exportOrder");
+      const { generateOrderPdf } = await import("@/lib/exportOrderPdf");
       const buffer = await generateOrderPdf(order);
       const blob = new Blob([buffer], { type: "application/pdf" });
       const url = URL.createObjectURL(blob);
@@ -118,8 +118,8 @@ const OrdersTable = ({
   const handleDownloadExcel = async (order: PurchaseOrder) => {
     setExcelLoadingId(order.id);
     try {
-      const { generateOrderExcel } = await import("@/lib/exportOrder");
-      const buffer = generateOrderExcel(order);
+      const { generateOrderExcel } = await import("@/lib/exportOrderExcel");
+      const buffer = await generateOrderExcel(order);
       const blob = new Blob([buffer], {
         type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       });

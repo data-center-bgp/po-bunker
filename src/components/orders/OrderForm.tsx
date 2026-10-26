@@ -5,8 +5,11 @@ import {
   ordersService,
   partnersService,
   regionsService,
+  LINE_STATUS_LABELS,
   type CodeBudget,
   type Company,
+  type LineStatus,
+  type OptionOrder,
   type OrderLineInput,
   type OrderType,
   type Partner,
@@ -71,6 +74,7 @@ interface LineFormData {
   project: string;
   requestedById: string;
   priority: string;
+  status: string;
   // auto-populated from product
   categoryId: string;
   codeBudgetId: string;
@@ -83,6 +87,12 @@ interface OrderHeaderData {
   orderType: string;
   dateOrder: string;
   notes: string;
+  optionOrder: string;
+  partnerRef: string;
+  dateVendor: string;
+  dateBunker: string;
+  discount: string;
+  taxPercent: string;
 }
 
 interface OrderFormProps {
@@ -101,6 +111,7 @@ const emptyLine: LineFormData = {
   project: "",
   requestedById: "",
   priority: "",
+  status: "onprogress",
   categoryId: "",
   codeBudgetId: "",
   uomId: "",
@@ -112,6 +123,12 @@ const initialHeader: OrderHeaderData = {
   orderType: "",
   dateOrder: "",
   notes: "",
+  optionOrder: "quotation",
+  partnerRef: "",
+  dateVendor: "",
+  dateBunker: "",
+  discount: "0",
+  taxPercent: "0",
 };
 
 interface Requester {
@@ -215,6 +232,12 @@ const OrderForm = ({
       orderType: order.order_type || "",
       dateOrder: order.date_order ? toLocalInput(order.date_order) : "",
       notes: order.notes || "",
+      optionOrder: order.option_order || "quotation",
+      partnerRef: order.partner_ref || "",
+      dateVendor: order.date_vendor ? toLocalInput(order.date_vendor).slice(0, 10) : "",
+      dateBunker: order.date_bunker ? toLocalInput(order.date_bunker) : "",
+      discount: String(order.amount_discount ?? 0),
+      taxPercent: String(order.tax_percent ?? 0),
     });
 
     const orderLines = order.lines || [];
@@ -235,6 +258,7 @@ const OrderForm = ({
           categoryId: l.category_id ? l.category_id.toString() : "",
           codeBudgetId: l.code_budget_id ? l.code_budget_id.toString() : "",
           uomId: l.uom_id?.toString() || "",
+          status: l.status_list || "onprogress",
         })),
       );
     }
@@ -358,12 +382,18 @@ const OrderForm = ({
     );
   };
 
-  const grandTotal = lines.reduce((sum, l) => {
+  const subtotal = lines.reduce((sum, l) => {
+    if (l.status === "cancel") return sum;
     const q = parseFloat(l.quantity);
     const p = parseFloat(l.unitPrice);
     if (Number.isNaN(q) || Number.isNaN(p)) return sum;
     return sum + q * p;
   }, 0);
+  const discountValue = Math.max(parseFloat(header.discount) || 0, 0);
+  const untaxed = Math.max(subtotal - discountValue, 0);
+  const taxValue =
+    Math.round(untaxed * (parseFloat(header.taxPercent) || 0)) / 100;
+  const grandTotal = untaxed + taxValue;
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -377,6 +407,24 @@ const OrderForm = ({
       !header.dateOrder
     ) {
       setError("Please fill in all required header fields.");
+      setLoading(false);
+      return;
+    }
+
+    const discountInput = parseFloat(header.discount || "0");
+    const taxInput = parseFloat(header.taxPercent || "0");
+    if (Number.isNaN(discountInput) || discountInput < 0) {
+      setError("Discount must be zero or more.");
+      setLoading(false);
+      return;
+    }
+    if (Number.isNaN(taxInput) || taxInput < 0 || taxInput > 100) {
+      setError("VAT % must be between 0 and 100.");
+      setLoading(false);
+      return;
+    }
+    if (discountInput > subtotal) {
+      setError("The discount is larger than the order total.");
       setLoading(false);
       return;
     }
@@ -412,6 +460,7 @@ const OrderForm = ({
         project: l.project,
         requested_by: l.requestedById || null,
         priority: (l.priority as Priority) || null,
+        status_list: (l.status as LineStatus) || "onprogress",
       }));
 
       await ordersService.saveOrder(
@@ -422,6 +471,16 @@ const OrderForm = ({
           order_type: header.orderType as OrderType,
           date_order: new Date(header.dateOrder).toISOString(),
           notes: header.notes,
+          option_order: header.optionOrder as OptionOrder,
+          partner_ref: header.partnerRef.trim() || null,
+          date_vendor: header.dateVendor
+            ? new Date(`${header.dateVendor}T00:00:00`).toISOString()
+            : null,
+          date_bunker: header.dateBunker
+            ? new Date(header.dateBunker).toISOString()
+            : null,
+          amount_discount: discountInput,
+          tax_percent: taxInput,
         },
         orderLines,
       );
@@ -586,6 +645,99 @@ const OrderForm = ({
                         setHeader((h) => ({ ...h, dateOrder: e.target.value }))
                       }
                       required
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Vendor reference & pricing */}
+              <div>
+                <h4 className="text-sm font-semibold text-foreground mb-3">
+                  Vendor Reference & Pricing
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Vendor Document</Label>
+                    <Select
+                      value={header.optionOrder}
+                      onValueChange={(val) =>
+                        setHeader((h) => ({ ...h, optionOrder: val }))
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="quotation">Quotation</SelectItem>
+                        <SelectItem value="invoice">Invoice</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="partnerRef">Vendor Document No.</Label>
+                    <Input
+                      id="partnerRef"
+                      value={header.partnerRef}
+                      onChange={(e) =>
+                        setHeader((h) => ({ ...h, partnerRef: e.target.value }))
+                      }
+                      placeholder="Number on the vendor's quotation/invoice"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="dateVendor">Vendor Document Date</Label>
+                    <Input
+                      type="date"
+                      id="dateVendor"
+                      value={header.dateVendor}
+                      onChange={(e) =>
+                        setHeader((h) => ({ ...h, dateVendor: e.target.value }))
+                      }
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="dateBunker">Bunker Date & Time</Label>
+                    <Input
+                      type="datetime-local"
+                      id="dateBunker"
+                      value={header.dateBunker}
+                      onChange={(e) =>
+                        setHeader((h) => ({ ...h, dateBunker: e.target.value }))
+                      }
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="discount">Discount (Rp)</Label>
+                    <Input
+                      type="number"
+                      id="discount"
+                      min="0"
+                      step="0.01"
+                      value={header.discount}
+                      onChange={(e) =>
+                        setHeader((h) => ({ ...h, discount: e.target.value }))
+                      }
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="taxPercent">VAT (%)</Label>
+                    <Input
+                      type="number"
+                      id="taxPercent"
+                      min="0"
+                      max="100"
+                      step="0.01"
+                      value={header.taxPercent}
+                      onChange={(e) =>
+                        setHeader((h) => ({ ...h, taxPercent: e.target.value }))
+                      }
                     />
                   </div>
                 </div>
@@ -1064,14 +1216,55 @@ const OrderForm = ({
                               required
                             />
                           </div>
+
+                          <div className="space-y-2">
+                            <Label>Line Status</Label>
+                            <Select
+                              value={line.status}
+                              onValueChange={(val) =>
+                                updateLine(idx, { status: val })
+                              }
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {(
+                                  Object.keys(LINE_STATUS_LABELS) as LineStatus[]
+                                ).map((key) => (
+                                  <SelectItem key={key} value={key}>
+                                    {LINE_STATUS_LABELS[key]}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
                         </div>
                       </div>
                     );
                   })}
                 </div>
 
-                <div className="mt-3 flex justify-end text-sm">
-                  <div className="text-muted-foreground">
+                <div className="mt-3 flex flex-col items-end gap-1 text-sm text-muted-foreground">
+                  <div>
+                    Lines total (active lines):{" "}
+                    <span className="text-foreground">
+                      {formatCurrency(subtotal)}
+                    </span>
+                  </div>
+                  <div>
+                    Discount:{" "}
+                    <span className="text-foreground">
+                      - {formatCurrency(discountValue)}
+                    </span>
+                  </div>
+                  <div>
+                    VAT {parseFloat(header.taxPercent) || 0}%:{" "}
+                    <span className="text-foreground">
+                      {formatCurrency(taxValue)}
+                    </span>
+                  </div>
+                  <div>
                     Grand total:{" "}
                     <span className="font-semibold text-foreground text-base">
                       {formatCurrency(grandTotal)}

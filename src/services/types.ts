@@ -10,6 +10,24 @@ export type OrderState = "draft" | "to approve" | "purchase" | "done" | "cancel"
 export type OrderType = "bunker_fuel" | "bunker_water" | "logistic";
 export type Priority = "low" | "medium" | "high";
 export type UserRole = "admin" | "staff" | "viewer";
+export type ApprovalLevel = "first" | "second" | "third";
+export type LineStatus = "onprogress" | "hold" | "cancel" | "close";
+export type OptionOrder = "quotation" | "invoice";
+export type RemarkColor = "merah" | "biru";
+
+// Labels printed under the three signature boxes on the PO form.
+export const APPROVAL_LEVELS: { level: ApprovalLevel; label: string }[] = [
+  { level: "first", label: "Corporate Logistic Admin" },
+  { level: "second", label: "Corporate Logistic" },
+  { level: "third", label: "Business Unit PIC" },
+];
+
+export const LINE_STATUS_LABELS: Record<LineStatus, string> = {
+  onprogress: "On progress",
+  hold: "Hold",
+  cancel: "Cancelled",
+  close: "Closed",
+};
 
 export const ORDER_TYPE_LABELS: Record<OrderType, string> = {
   bunker_fuel: "Bunker Fuel",
@@ -23,6 +41,8 @@ export interface Profile {
   email: string;
   role: UserRole;
   active: boolean;
+  signature_path: string | null;
+  approval_levels: ApprovalLevel[];
 }
 
 export interface Region {
@@ -73,6 +93,7 @@ export interface Company {
   region_id: number | null;
   currency: string;
   business_unit_id: number | null;
+  logo_path: string | null;
   region: { id: number; name: string; code: string | null } | null;
   business_unit: BusinessUnit | null;
 }
@@ -93,6 +114,8 @@ export interface CompanyInput {
   region_id: number | null;
   currency: string;
   business_unit_id: number | null;
+  /** Only sent when the logo changed. */
+  logo_path?: string | null;
 }
 
 export interface Partner {
@@ -194,7 +217,16 @@ export interface OrderLine {
   project: string;
   requested_by: string | null;
   priority: Priority | null;
-  product: { id: number; name: string; default_code: string | null } | null;
+  status_list: LineStatus;
+  product: {
+    id: number;
+    name: string;
+    default_code: string | null;
+    merk: string | null;
+    model: string | null;
+    serial_number: string | null;
+    specs: string | null;
+  } | null;
   vessel: { id: number; name: string; code: string | null } | null;
   region: Ref | null;
   uom: Ref | null;
@@ -217,13 +249,48 @@ export interface PurchaseOrder {
   amount_tax: number;
   amount_discount: number;
   amount_total: number;
+  option_order: OptionOrder;
+  partner_ref: string | null;
+  date_vendor: string | null;
+  date_bunker: string | null;
+  tax_percent: number;
   created_by: string | null;
   first_approved_by: string | null;
   first_approved_at: string | null;
-  company: { id: number; name: string; code_company: string | null } | null;
-  partner: Ref | null;
+  first_approved_signature_path: string | null;
+  second_approved_by: string | null;
+  second_approved_at: string | null;
+  second_approved_signature_path: string | null;
+  third_approved_by: string | null;
+  third_approved_at: string | null;
+  third_approved_signature_path: string | null;
+  company: {
+    id: number;
+    name: string;
+    code_company: string | null;
+    logo_path: string | null;
+  } | null;
+  partner: {
+    id: number;
+    name: string;
+    street: string | null;
+    city: string | null;
+    phone: string | null;
+  } | null;
+  creator: { id: string; name: string } | null;
   first_approver: { id: string; name: string } | null;
+  second_approver: { id: string; name: string } | null;
+  third_approver: { id: string; name: string } | null;
+  remarks: OrderRemark[];
   lines: OrderLine[];
+}
+
+export interface OrderRemark {
+  id: number;
+  order_id: number;
+  remark_date: string;
+  color: RemarkColor;
+  remark: string;
 }
 
 export interface OrderHeaderInput {
@@ -232,6 +299,12 @@ export interface OrderHeaderInput {
   order_type: OrderType;
   date_order: string; // ISO timestamp
   notes: string;
+  option_order: OptionOrder;
+  partner_ref: string | null;
+  date_vendor: string | null; // ISO timestamp
+  date_bunker: string | null; // ISO timestamp
+  amount_discount: number;
+  tax_percent: number;
 }
 
 export interface OrderLineInput {
@@ -247,4 +320,5 @@ export interface OrderLineInput {
   project: string;
   requested_by: string | null;
   priority: Priority | null;
+  status_list: LineStatus;
 }
