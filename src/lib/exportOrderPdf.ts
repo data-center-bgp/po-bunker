@@ -79,6 +79,17 @@ export const generateOrderPdf = async (
   doc.text("PURCHASE ORDER", pageWidth / 2, y + 10, { align: "center" });
   y += 14;
 
+  if (data.cancelled) {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.setTextColor(200, 0, 0);
+    const text = `CANCELLED${data.cancelled.reason ? ` - ${data.cancelled.reason}` : ""}`;
+    const wrapped = doc.splitTextToSize(text, contentWidth) as string[];
+    doc.text(wrapped, pageWidth / 2, y, { align: "center" });
+    doc.setTextColor(0, 0, 0);
+    y += wrapped.length * 4.5 + 2;
+  }
+
   // --- header block -----------------------------------------------------------
   autoTable(doc, {
     startY: y,

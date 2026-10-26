@@ -133,6 +133,10 @@ It pulls, rebuilds and publishes; nothing needs restarting. Database changes are
 separate: new files in `supabase/migrations/` are applied by hand (see
 `supabase/README.md`) before or together with the deploy that needs them.
 
+**Migration 0007 (Submitted / Completed / Cancelled lifecycle) is not backwards compatible.** It changes the order states and
+drops the old confirm/approve functions, so the previous frontend stops working on orders. Apply it and run
+`bash deploy/update.sh` back to back.
+
 ## Troubleshooting
 
 | Symptom | Look at |

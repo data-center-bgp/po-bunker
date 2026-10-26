@@ -178,6 +178,18 @@ export const generateOrderExcel = async (
     italic: true,
   };
 
+  if (data.cancelled) {
+    box(
+      ws,
+      11,
+      1,
+      11,
+      15,
+      `CANCELLED${data.cancelled.reason ? ` - ${data.cancelled.reason}` : ""}`,
+      { border: false, align: "center", bold: true, size: 12, color: "FFC80000" },
+    );
+  }
+
   // --- header block (rows 12-14) -----------------------------------------------
   [12, 13, 14].forEach((r) => (ws.getRow(r).height = 22));
   const head = (r: number, left: ExcelJS.CellValue, leftValue: string, right: ExcelJS.CellValue, rightValue: string) => {

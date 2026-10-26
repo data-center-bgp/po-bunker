@@ -38,6 +38,8 @@ export interface PrintData {
   logo: PrintImage | null;
   poNumber: string;
   poDate: string;
+  /** Set for cancelled orders: printed in red under the title. */
+  cancelled: { reason: string } | null;
   vendorName: string;
   vendorAddress: string;
   vendorPhone: string;
@@ -151,6 +153,10 @@ export const buildPrintData = async (
     logo,
     poNumber: order.name,
     poDate: dateTime(order.date_order),
+    cancelled:
+      order.state === "cancelled"
+        ? { reason: order.cancel_reason ?? "" }
+        : null,
     vendorName: partner?.name ?? "",
     vendorAddress: address,
     vendorPhone: partner?.phone ?? "",

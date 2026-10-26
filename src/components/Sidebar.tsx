@@ -1,6 +1,4 @@
-import { useState } from "react";
 import { useAuth } from "@/contexts/useAuth";
-import MySignatureDialog from "@/components/MySignatureDialog";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
@@ -27,7 +25,6 @@ import {
   MapPin,
   Building2,
   Building,
-  PenLine,
 } from "lucide-react";
 
 export type TabType =
@@ -100,8 +97,7 @@ const Sidebar = ({
   onTabChange,
   onLogout,
 }: SidebarProps) => {
-  const { user, canWrite } = useAuth();
-  const [signatureOpen, setSignatureOpen] = useState(false);
+  const { user } = useAuth();
 
   const getInitials = (email: string) => {
     return email.charAt(0).toUpperCase();
@@ -241,17 +237,6 @@ const Sidebar = ({
                 <p className="text-xs text-muted-foreground">Account</p>
               </div>
               <Separator className="my-1.5" />
-              {canWrite && (
-                <Button
-                  variant="ghost"
-                  className="w-full justify-start gap-2"
-                  size="sm"
-                  onClick={() => setSignatureOpen(true)}
-                >
-                  <PenLine className="h-4 w-4" />
-                  My signature
-                </Button>
-              )}
               <Button
                 variant="ghost"
                 className="w-full justify-start gap-2 text-destructive hover:bg-destructive/10 hover:text-destructive"
@@ -265,10 +250,6 @@ const Sidebar = ({
           </Popover>
         </div>
       </aside>
-      <MySignatureDialog
-        open={signatureOpen}
-        onOpenChange={setSignatureOpen}
-      />
     </TooltipProvider>
   );
 };

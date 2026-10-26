@@ -7,15 +7,13 @@ import {
 } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
-import type { ApprovalLevel, Profile, UserRole } from "@/services/types";
+import type { Profile, UserRole } from "@/services/types";
 
 export interface AuthUser {
   id: string;
   email: string;
   name: string;
   role: UserRole;
-  signature_path: string | null;
-  approval_levels: ApprovalLevel[];
 }
 
 export interface AuthContextType {
@@ -27,8 +25,6 @@ export interface AuthContextType {
   canWrite: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
-  /** Re-reads the signed-in user's profile (e.g. after uploading a signature). */
-  refreshUser: () => Promise<void>;
 }
 
 const NO_ACCESS_MESSAGE =
@@ -45,7 +41,6 @@ const defaultAuthContext: AuthContextType = {
   canWrite: false,
   login: notReady,
   logout: notReady,
-  refreshUser: notReady,
 };
 
 export const AuthContext = createContext<AuthContextType>(defaultAuthContext);
@@ -56,7 +51,7 @@ export const AuthContext = createContext<AuthContextType>(defaultAuthContext);
 const loadProfile = async (session: Session): Promise<AuthUser | null> => {
   const { data, error } = await supabase
     .from("profiles")
-    .select("id,name,email,role,active,signature_path,approval_levels")
+    .select("id,name,email,role,active")
     .eq("id", session.user.id)
     .maybeSingle<Profile>();
   if (error) throw new Error(error.message);
@@ -66,8 +61,6 @@ const loadProfile = async (session: Session): Promise<AuthUser | null> => {
     email: data.email,
     name: data.name,
     role: data.role,
-    signature_path: data.signature_path,
-    approval_levels: data.approval_levels ?? [],
   };
 };
 
@@ -143,13 +136,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUser(null);
   }, []);
 
-  const refreshUser = useCallback(async () => {
-    const { data } = await supabase.auth.getSession();
-    if (!data.session) return;
-    const profile = await loadProfile(data.session);
-    if (profile) setUser(profile);
-  }, []);
-
   return (
     <AuthContext.Provider
       value={{
@@ -159,7 +145,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         canWrite: user?.role === "admin" || user?.role === "staff",
         login,
         logout,
-        refreshUser,
       }}
     >
       {children}

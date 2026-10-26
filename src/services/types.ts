@@ -6,7 +6,15 @@ export interface Ref {
   name: string;
 }
 
-export type OrderState = "draft" | "to approve" | "purchase" | "done" | "cancel";
+// submitted: created (locked); completed: DO uploaded + actual quantities;
+// cancelled: wrongly made or really cancelled, with a reason.
+export type OrderState = "submitted" | "completed" | "cancelled";
+
+export const ORDER_STATE_LABELS: Record<OrderState, string> = {
+  submitted: "Submitted",
+  completed: "Completed",
+  cancelled: "Cancelled",
+};
 export type OrderType = "bunker_fuel" | "bunker_water" | "logistic";
 export type Priority = "low" | "medium" | "high";
 export type UserRole = "admin" | "staff" | "viewer";
@@ -233,6 +241,8 @@ export interface OrderLine {
   product_qty: number;
   price_unit: number;
   price_subtotal: number;
+  actual_qty: number | null;
+  actual_subtotal: number | null;
   project: string;
   requested_by: string | null;
   priority: Priority | null;
@@ -297,11 +307,29 @@ export interface PurchaseOrder {
     phone: string | null;
   } | null;
   creator: { id: string; name: string } | null;
-  first_approver: { id: string; name: string } | null;
-  second_approver: { id: string; name: string } | null;
-  third_approver: { id: string; name: string } | null;
+  completer: { id: string; name: string } | null;
+  canceller: { id: string; name: string } | null;
+  completed_at: string | null;
+  completed_by: string | null;
+  cancel_reason: string | null;
+  cancelled_at: string | null;
+  cancelled_by: string | null;
+  actual_amount: number | null;
+  documents: OrderDocument[];
   remarks: OrderRemark[];
   lines: OrderLine[];
+}
+
+export interface OrderDocument {
+  id: number;
+  order_id: number;
+  doc_type: "delivery_order";
+  file_path: string;
+  file_name: string;
+  mime_type: string;
+  size_bytes: number;
+  uploaded_at: string;
+  uploader: { id: string; name: string } | null;
 }
 
 export interface OrderRemark {
@@ -339,5 +367,4 @@ export interface OrderLineInput {
   project: string;
   requested_by: string | null;
   priority: Priority | null;
-  status_list: LineStatus;
 }

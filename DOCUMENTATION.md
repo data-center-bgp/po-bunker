@@ -38,7 +38,7 @@
 | ------------------------- | ----------------------------------------------------- |
 | Authentication            | Supabase Auth email/password login, role-based access |
 | Purchase Order Management | Full CRUD — create, view, edit, and delete POs        |
-| Status Workflow           | Draft → Confirmed → Cancelled lifecycle               |
+| Status Workflow           | Submitted → Completed (DO + actual quantity) or Cancelled (with reason) |
 | Multi-line Orders         | Each PO supports multiple product line items          |
 | PDF Export                | Generate and preview a formatted PDF for any order    |
 | Excel Export              | Download order data as a `.xlsx` spreadsheet          |
@@ -194,7 +194,7 @@ The **Orders** page lists all purchase orders in a paginated table.
 | Order Type | Type of purchase order                                     |
 | Date       | Order creation date                                        |
 | Total      | Total amount (IDR)                                         |
-| Status     | Current order state (badge: Draft / Confirmed / Cancelled) |
+| Status     | Current order state (badge: Submitted / Completed / Cancelled) |
 | Actions    | Buttons for View, Edit, Print, Download, Delete            |
 
 **Pagination** controls appear below the table. Navigate between pages using the **Previous** / **Next** buttons or the page number display.
@@ -240,61 +240,49 @@ Each order must have at least one line item. Click **"Add Line"** to add more ro
 | **Category**     | Product division/category                        | Auto-filled from product              |
 | **Code Budget**  | Budget allocation code (searchable, overridable) | Auto-filled from product              |
 | **Unit**         | Unit of Measure                                  | Auto-filled from product              |
-| **Line Status**  | On progress / Hold / Cancelled / Closed          | Cancelled lines leave the totals and print struck through |
 
 - The **subtotal** per line and the totals are calculated automatically: lines total (active lines) minus the discount, plus VAT on the remainder.
 - To remove a line, click the **trash icon** on that row.
 
-3. Click **"Create Order"** to submit. The new order appears in the table with **Draft** status.
+3. Click **"Submit Order"**. The new order appears in the table with **Submitted** status. It is locked from then on (see 5.6).
 
 ---
 
 ### 5.5 Viewing an Order
 
-Click the **Eye icon** (`👁`) on any order row to open the **View Order** modal.
-
-The modal displays:
-
-- **Order header** — reference number, vendor, company, order type, dates (order, confirmed, vendor document, bunker), status badge
-- **Financial summary** — lines total, discount, VAT, and total amount
-- **Order lines table** — product, vessel, quantity, unit price, subtotal and line status (changeable on draft and confirmed orders)
-- **Approvals** — the three signature boxes (see 5.10)
-- **Remarks** — red/blue notes (see 5.10)
-- **Notes** — rendered rich-text notes (sanitized against XSS)
-- **Action buttons** — Confirm, Cancel, Set to Draft, Delete (depending on current state)
+Click the **Eye icon** on any order row to open the **View Order** dialog. It shows the status, the dates (order, vendor
+document, bunker, completed), the customer and company, the order items, the totals, the Delivery Order files, the remarks
+and the notes. A cancelled order shows who cancelled it, when, and the reason. A completed order also shows the **ordered vs
+actual quantity and amount** per line.
 
 ---
 
-### 5.6 Editing an Order
+### 5.6 Submitting and fixing an order
 
-> **Note:** Only orders in **Draft** status can be edited.
-
-1. Click the **Pencil icon** on the desired order row (only active for Draft orders).
-2. The **Order Form** dialog opens pre-populated with the existing data.
-3. Modify any header fields or line items as needed.
-   - To add a line: click **"Add Line"**.
-   - To remove a line: click the trash icon on that row.
-4. Click **"Update Order"** to save.
+Creating an order submits it. A **submitted order is locked**: its header and lines cannot be edited. If an order was made
+wrongly, **cancel it and create a new one** (the *Copy as new PO* button on a cancelled order opens the form prefilled).
+Remarks can still be added to an order in any status.
 
 ---
 
-### 5.7 Order Status Management
+### 5.7 Order status workflow
 
-Orders follow a defined lifecycle. Status transitions are triggered via the action buttons in the table row or inside the **View Order** modal.
+| Status        | Meaning                                                       | How it gets there                                |
+| ------------- | ------------------------------------------------------------- | ------------------------------------------------ |
+| **Submitted** | The PO was created                                            | Save the order form                              |
+| **Completed** | The bunkering happened; the DO and the actual quantity are recorded | **Complete** on a submitted order          |
+| **Cancelled** | The PO was made wrongly or was really cancelled               | **Cancel PO** on a submitted order, with a reason |
 
-| Action           | Button        | From State             | To State               |
-| ---------------- | ------------- | ---------------------- | ---------------------- |
-| **Confirm**      | ✅ Check icon | Draft                  | Confirmed (`purchase`). Confirming is not an approval. |
-| **Cancel**       | ✕ icon        | Draft or Confirmed     | Cancelled              |
-| **Set to Draft** | ↩ Reset icon  | Confirmed or Cancelled | Draft                  |
+**Complete** (green check): upload at least one **Delivery Order (DO)** file (PDF, JPG or PNG, max 5 MB each) and enter the
+**actual quantity** for every line (for example ordered 1000 L, the DO says 900 L). Both numbers are kept; the ordered totals,
+discount and VAT are not recalculated, and the actual amount (quantity x unit price) is shown next to them. A completed order
+is final.
 
-Status badges in the table are color-coded:
+**Cancel PO** (orange X): a reason (at least 3 characters) is required. The order stays in the list with its reason and its
+number is not reused. Only submitted orders can be cancelled.
 
-| Status    | Badge Color |
-| --------- | ----------- |
-| Draft     | Gray        |
-| Confirmed | Green       |
-| Cancelled | Red         |
+Status badges: Submitted (blue), Completed (green), Cancelled (red). Admins and staff can submit, complete and cancel;
+viewers only read.
 
 ---
 
@@ -302,73 +290,28 @@ Status badges in the table are color-coded:
 
 Two export formats are available per order from the **action buttons** in the table. Both reproduce the bilingual
 "ORDER PEMBELIAN / PURCHASE ORDER" form of the old system (bunker layout): company logo, vendor block, line table,
-remarks, total / discount / VAT / grand total, amount in words (Terbilang), payment options and the three signature boxes.
-Cancelled lines are struck through. The company logo comes from the company record (fallback: the group logo).
+remarks, total / discount / VAT / grand total, amount in words (Terbilang), payment options and three signature boxes
+(empty on new orders; old orders keep their printed signatures). A cancelled order prints a red CANCELLED line with its reason.
+Both run in your browser.
 
-#### PDF Preview
-
-1. Click the **Printer icon** on the order row.
-2. A loading spinner appears while the PDF is generated in your browser.
-3. The **PDF Preview** modal opens with the generated document.
-4. Use your browser's built-in PDF toolbar to **save or print** the document.
-5. Click **Close** to dismiss the modal.
-
-#### Excel Download
-
-1. Click the **Download icon** on the order row.
-2. The `.xlsx` file is generated and **automatically downloaded** to your device.
-3. The filename follows the pattern: `<OrderName>.xlsx`.
+- **PDF Preview:** click the **Printer icon**, then save or print from the viewer.
+- **Excel Download:** click the **Download icon**; the file is named after the PO number.
 
 ---
 
-### 5.10 Approvals, signatures and remarks
+### 5.9 Remarks
 
-**Signatures.** Admins and staff upload their signature once from the user menu (**My signature**, PNG or JPG under 1 MB).
-It is stored privately and copied onto a PO at the moment you approve it, so changing your signature later never alters
-POs you already approved.
-
-**Approvals.** After an order is **Confirmed**, three people approve it in any order: *Corporate Logistic Admin*,
-*Corporate Logistic* and *Business Unit PIC*. The **Approve** button appears in the View Order dialog only for users who
-may approve that level and have a signature. Setting the order back to Draft clears all approvals.
-An admin sets who may approve which level (see `supabase/README.md`).
-
-**Remarks.** Admins and staff can add, and delete, colored notes (red or blue) on an order in any state, for example delivery
-updates. They print under the order lines.
-
----
-
-### 5.9 Deleting an Order
-
-1. Click the **Trash icon** on the order row.
-2. A **confirmation dialog** appears showing the order name.
-3. If the order is in **Confirmed** state, you are warned that it will be cancelled first before deletion. Only draft and cancelled orders can be deleted.
-4. Click **Confirm Delete** to permanently remove the order.
-5. Click **Cancel** to abort.
-
-> Deletion is irreversible. Always verify the correct order before confirming.
+Admins and staff can add and delete colored notes (red or blue) on an order in any status, for example delivery updates.
+They print under the order lines.
 
 ---
 
 ## 6. Order States & Workflow
 
 ```
-                ┌─────────────────────────────────────┐
-                │                                     │
-          ┌─────▼──────┐   Confirm    ┌─────────────┐ │
-  New ──► │   DRAFT    ├────────────► │  CONFIRMED  │ │
-          │  (draft)   │◄────────────┤  (purchase) │ │
-          └─────┬──────┘  Set Draft  └──────┬──────┘ │
-                │                           │         │
-                │ Cancel                    │ Cancel  │
-                ▼                           ▼         │
-          ┌───────────┐              ┌────────────┐   │
-          │ CANCELLED │              │ CANCELLED  │   │
-          │ (cancel)  │              │ (cancel)   │   │
-          └─────┬─────┘              └─────┬──────┘   │
-                │    Set Draft             │           │
-                └──────────────────────────┘           │
-                                                       │
-          [ Delete available from any state ]◄─────────┘
+   New order ──► SUBMITTED ──── Complete (DO + actual qty) ───► COMPLETED   (final)
+                     │
+                     └──────── Cancel (reason) ───────────────► CANCELLED   (final; "Copy as new PO")
 ```
 
 ---
@@ -386,9 +329,8 @@ The authoritative definition is in `supabase/migrations/0001_schema.sql`. The sh
 | `company_id`         | bigint → `companies`                              | Issuing company                     |
 | `partner_id`         | bigint → `partners`                               | Vendor/supplier                     |
 | `order_type`         | `bunker_fuel` / `bunker_water` / `logistic`       | Type of order                       |
-| `state`              | `draft` / `to approve` / `purchase` / `done` / `cancel` | Order lifecycle state         |
+| `state`              | `submitted` / `completed` / `cancelled`           | Order lifecycle state               |
 | `date_order`         | timestamptz                                       | Order date and time                 |
-| `date_approve`       | timestamptz                                       | Set when confirmed                  |
 | `amount_untaxed`     | numeric                                           | Sum of line subtotals (maintained by trigger) |
 | `amount_tax`         | numeric                                           | 0 for now                           |
 | `amount_total`       | numeric                                           | untaxed + tax - discount            |
@@ -397,7 +339,10 @@ The authoritative definition is in `supabase/migrations/0001_schema.sql`. The sh
 | `date_bunker`        | timestamptz                                       | Planned bunker date                 |
 | `tax_percent`        | numeric (0-100)                                   | VAT %                               |
 | `amount_discount`    | numeric (>= 0)                                    | Discount amount (entered by the user) |
-| `first/second/third_approved_by`, `_at`, `_signature_path` | uuid / timestamptz / text | Three-level approval with the signature snapshot |
+| `completed_at`, `completed_by` | timestamptz / uuid                      | Who completed the order and when    |
+| `cancel_reason`, `cancelled_at`, `cancelled_by` | text / timestamptz / uuid | Cancellation reason, when and by whom |
+| `actual_amount`      | numeric                                           | Sum of actual quantity x unit price (set on completion) |
+| `first/second/third_approved_*` | uuid / timestamptz / text              | Legacy three-level approval and signature snapshot (old orders only, no longer used) |
 
 ### Order Line (`po_bunker.purchase_order_lines`)
 
@@ -415,9 +360,12 @@ The authoritative definition is in `supabase/migrations/0001_schema.sql`. The sh
 | `project`        | text                            | Project name or reference      |
 | `requested_by`   | uuid → `profiles`               | Requesting user (optional)     |
 | `priority`       | `low` / `medium` / `high`       | Line priority (optional)       |
-| `status_list`    | `onprogress` / `hold` / `cancel` / `close` | Cancelled lines are excluded from totals |
+| `actual_qty`     | numeric (>= 0)                  | Quantity on the Delivery Order (set on completion) |
+| `actual_subtotal` | numeric (generated)            | `round(actual qty * unit price, 2)` |
+| `status_list`    | `onprogress` / `hold` / `cancel` / `close` | Legacy per-line status, no longer used in the app |
 
 `po_bunker.purchase_order_remarks` holds the colored notes (`order_id`, `remark_date`, `color` merah/biru, `remark`).
+`po_bunker.purchase_order_documents` holds the Delivery Order files (`order_id`, `doc_type`, `file_path`, `file_name`, `mime_type`, `size_bytes`); the files live in the private bucket `po_bunker_assets` under `documents/<order id>/`.
 
 ---
 
@@ -435,15 +383,12 @@ Orders and lines cannot be inserted or updated directly. The app calls database 
 
 | RPC                                            | Description                                                   |
 | ---------------------------------------------- | ------------------------------------------------------------- |
-| `save_purchase_order(p_id, p_header, p_lines)` | Create (`p_id` null) or edit a draft; header and lines atomically |
-| `confirm_purchase_order(p_id)`                 | draft → purchase (not an approval)                            |
-| `approve_purchase_order(p_id, p_level)`        | confirmed order: `first` / `second` / `third` approval, copies the approver's signature |
-| `set_line_status(p_line_id, p_status)`         | change a line's status on a draft or confirmed order          |
-| `set_my_signature(p_path)`                     | save the caller's own signature path                          |
-| `cancel_purchase_order(p_id)`                  | draft / to approve / purchase → cancel                        |
-| `set_purchase_order_draft(p_id)`               | to approve / purchase / cancel → draft                        |
+| `save_purchase_order(null, p_header, p_lines)` | Submit a new order (header and lines atomically). Editing an existing order is refused |
+| `complete_purchase_order(p_id, p_lines)`       | Submitted order only; needs >= 1 DO file and an actual quantity for every line |
+| `cancel_purchase_order(p_id, p_reason)`        | Submitted order only; a reason is required                    |
 
-Deleting is a plain `DELETE`, allowed only for draft or cancelled orders.
+Delivery Order files are added and removed with plain inserts/deletes on `purchase_order_documents` (and the storage
+bucket), allowed only while the order is submitted. Orders cannot be deleted from the app.
 
 ### Reference data
 

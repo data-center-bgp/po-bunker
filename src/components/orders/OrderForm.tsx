@@ -5,10 +5,8 @@ import {
   ordersService,
   partnersService,
   regionsService,
-  LINE_STATUS_LABELS,
   type CodeBudget,
   type Company,
-  type LineStatus,
   type OptionOrder,
   type OrderLineInput,
   type OrderType,
@@ -74,7 +72,6 @@ interface LineFormData {
   project: string;
   requestedById: string;
   priority: string;
-  status: string;
   // auto-populated from product
   categoryId: string;
   codeBudgetId: string;
@@ -99,7 +96,8 @@ interface OrderFormProps {
   isOpen: boolean;
   onSuccess: () => void;
   onCancel: () => void;
-  order?: PurchaseOrder | null;
+  /** Prefills the form ("Copy as new PO"); the result is always a new order. */
+  template?: PurchaseOrder | null;
 }
 
 const emptyLine: LineFormData = {
@@ -111,7 +109,6 @@ const emptyLine: LineFormData = {
   project: "",
   requestedById: "",
   priority: "",
-  status: "onprogress",
   categoryId: "",
   codeBudgetId: "",
   uomId: "",
@@ -158,8 +155,9 @@ const OrderForm = ({
   isOpen,
   onSuccess,
   onCancel,
-  order = null,
+  template = null,
 }: OrderFormProps) => {
+  const order = template;
   const [header, setHeader] = useState<OrderHeaderData>(initialHeader);
   const [lines, setLines] = useState<LineFormData[]>([{ ...emptyLine }]);
   const [vessels, setVessels] = useState<Vessel[]>([]);
@@ -187,7 +185,7 @@ const OrderForm = ({
     null,
   );
 
-  const isEditing = !!order && !!order.id;
+  const isCopy = !!order;
 
   // Only company suppliers can be selected as the customer on a PO. If an
   // existing order's partner no longer matches (e.g. legacy data), keep it
@@ -230,7 +228,7 @@ const OrderForm = ({
       companyId: order.company_id?.toString?.() || "",
       partnerId: order.partner_id?.toString?.() || "",
       orderType: order.order_type || "",
-      dateOrder: order.date_order ? toLocalInput(order.date_order) : "",
+      dateOrder: toLocalInput(new Date().toISOString()),
       notes: order.notes || "",
       optionOrder: order.option_order || "quotation",
       partnerRef: order.partner_ref || "",
@@ -258,7 +256,6 @@ const OrderForm = ({
           categoryId: l.category_id ? l.category_id.toString() : "",
           codeBudgetId: l.code_budget_id ? l.code_budget_id.toString() : "",
           uomId: l.uom_id?.toString() || "",
-          status: l.status_list || "onprogress",
         })),
       );
     }
@@ -383,7 +380,6 @@ const OrderForm = ({
   };
 
   const subtotal = lines.reduce((sum, l) => {
-    if (l.status === "cancel") return sum;
     const q = parseFloat(l.quantity);
     const p = parseFloat(l.unitPrice);
     if (Number.isNaN(q) || Number.isNaN(p)) return sum;
@@ -448,7 +444,6 @@ const OrderForm = ({
 
     try {
       const orderLines: OrderLineInput[] = lines.map((l) => ({
-        ...(isEditing && l.id ? { id: l.id } : {}),
         product_id: parseInt(l.productId),
         vessel_id: parseInt(l.vesselId),
         uom_id: parseInt(l.uomId),
@@ -460,11 +455,9 @@ const OrderForm = ({
         project: l.project,
         requested_by: l.requestedById || null,
         priority: (l.priority as Priority) || null,
-        status_list: (l.status as LineStatus) || "onprogress",
       }));
 
-      await ordersService.saveOrder(
-        isEditing && order ? order.id : null,
+      await ordersService.createOrder(
         {
           company_id: parseInt(header.companyId),
           partner_id: parseInt(header.partnerId),
@@ -489,14 +482,10 @@ const OrderForm = ({
       onSuccess();
     } catch (err) {
       setError(
-        err instanceof Error
-          ? err.message
-          : order
-            ? "Failed to update order"
-            : "Failed to create order",
+        err instanceof Error ? err.message : "Failed to create order",
       );
       console.error(
-        order ? "Error updating order:" : "Error creating order:",
+        "Error creating order:",
         err,
       );
     } finally {
@@ -517,12 +506,12 @@ const OrderForm = ({
         <DialogHeader className="px-6 pt-6">
           <DialogTitle className="flex items-center gap-2">
             <Package className="h-5 w-5" />
-            {isEditing ? "Edit Order" : "Create New Order"}
+            {isCopy ? "Copy as New Order" : "Create New Order"}
           </DialogTitle>
           <DialogDescription>
-            {isEditing
-              ? "Update the details below to modify this purchase order."
-              : "Fill in the details below to create a new purchase order."}
+            {isCopy
+              ? "A copy of the cancelled order. Check the details, then submit it as a new order."
+              : "Fill in the details below to submit a new purchase order. A submitted order cannot be edited: cancel it and create a new one to fix a mistake."}
           </DialogDescription>
         </DialogHeader>
 
@@ -1225,28 +1214,6 @@ const OrderForm = ({
                             />
                           </div>
 
-                          <div className="space-y-2">
-                            <Label>Line Status</Label>
-                            <Select
-                              value={line.status}
-                              onValueChange={(val) =>
-                                updateLine(idx, { status: val })
-                              }
-                            >
-                              <SelectTrigger>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {(
-                                  Object.keys(LINE_STATUS_LABELS) as LineStatus[]
-                                ).map((key) => (
-                                  <SelectItem key={key} value={key}>
-                                    {LINE_STATUS_LABELS[key]}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
                         </div>
                       </div>
                     );
@@ -1326,12 +1293,10 @@ const OrderForm = ({
             {loading ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                {isEditing ? "Updating..." : "Creating..."}
+                Submitting...
               </>
-            ) : isEditing ? (
-              "Update Order"
             ) : (
-              "Create Order"
+              "Submit Order"
             )}
           </Button>
         </DialogFooter>

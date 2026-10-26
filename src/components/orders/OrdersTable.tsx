@@ -1,4 +1,8 @@
-import { type PurchaseOrder } from "@/services";
+import {
+  ORDER_STATE_LABELS,
+  type OrderState,
+  type PurchaseOrder,
+} from "@/services";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
@@ -18,8 +22,6 @@ import {
 } from "@/components/ui/tooltip";
 import {
   Eye,
-  Pencil,
-  Trash2,
   ChevronLeft,
   ChevronRight,
   ChevronDown,
@@ -27,21 +29,12 @@ import {
   Loader2,
   Printer,
   Download,
-  AlertCircle,
   CheckCircle,
+  Copy,
   XCircle,
-  FileText,
 } from "lucide-react";
 import PdfPreviewModal from "./PdfPreviewModal";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { useState, Fragment } from "react";
+import { useState, Fragment, type ReactNode } from "react";
 
 interface OrdersTableProps {
   orders: PurchaseOrder[];
@@ -50,13 +43,60 @@ interface OrdersTableProps {
   totalCount: number;
   limit: number;
   onPageChange: (page: number) => void;
-  onEdit?: (order: PurchaseOrder) => void;
   onView?: (orderId: number) => void;
-  onDelete?: (orderId: number, cancelFirst?: boolean) => Promise<void>;
-  onConfirm?: (orderId: number) => Promise<void>;
-  onCancel?: (orderId: number) => Promise<void>;
-  onSetDraft?: (orderId: number) => Promise<void>;
+  onComplete?: (orderId: number) => void;
+  onCancel?: (orderId: number) => void;
+  onCopy?: (order: PurchaseOrder) => void;
 }
+
+const STATE_VARIANT: Record<OrderState, "info" | "success" | "destructive"> = {
+  submitted: "info",
+  completed: "success",
+  cancelled: "destructive",
+};
+
+type Filter = "all" | OrderState;
+const FILTERS: { key: Filter; label: string }[] = [
+  { key: "all", label: "All" },
+  { key: "submitted", label: "Submitted" },
+  { key: "completed", label: "Completed" },
+  { key: "cancelled", label: "Cancelled" },
+];
+
+const stripHtml = (html: string) =>
+  html
+    .replace(/<[^>]*>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .trim();
+
+const IconAction = ({
+  tip,
+  onClick,
+  disabled,
+  className,
+  children,
+}: {
+  tip: string;
+  onClick: () => void;
+  disabled?: boolean;
+  className?: string;
+  children: ReactNode;
+}) => (
+  <Tooltip>
+    <TooltipTrigger asChild>
+      <Button
+        variant="ghost"
+        size="icon"
+        className={`h-8 w-8 ${className ?? ""}`}
+        onClick={onClick}
+        disabled={disabled}
+      >
+        {children}
+      </Button>
+    </TooltipTrigger>
+    <TooltipContent>{tip}</TooltipContent>
+  </Tooltip>
+);
 
 const OrdersTable = ({
   orders,
@@ -65,27 +105,17 @@ const OrdersTable = ({
   totalCount,
   limit,
   onPageChange,
-  onEdit,
   onView,
-  onDelete,
-  onConfirm,
+  onComplete,
   onCancel,
-  onSetDraft,
+  onCopy,
 }: OrdersTableProps) => {
   const [pdfLoadingId, setPdfLoadingId] = useState<number | null>(null);
   const [excelLoadingId, setExcelLoadingId] = useState<number | null>(null);
   const [pdfModalUrl, setPdfModalUrl] = useState<string | null>(null);
   const [pdfModalOpen, setPdfModalOpen] = useState(false);
-  const [deleteOrderId, setDeleteOrderId] = useState<number | null>(null);
-  const [deleteOrderName, setDeleteOrderName] = useState<string>("");
-  const [deleteOrderState, setDeleteOrderState] = useState<string>("");
-  const [deleteOpen, setDeleteOpen] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
-  const [confirmingId, setConfirmingId] = useState<number | null>(null);
-  const [cancellingId, setCancellingId] = useState<number | null>(null);
-  const [draftingId, setDraftingId] = useState<number | null>(null);
   const [expandedRows, setExpandedRows] = useState<Record<number, boolean>>({});
+  const [filter, setFilter] = useState<Filter>("all");
 
   const toggleExpanded = (id: number) =>
     setExpandedRows((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -93,12 +123,11 @@ const OrdersTable = ({
   const handleOpenPdf = async (order: PurchaseOrder) => {
     setPdfLoadingId(order.id);
     try {
-      // Loaded on demand: jspdf and xlsx are large.
+      // Loaded on demand: jspdf and exceljs are large.
       const { generateOrderPdf } = await import("@/lib/exportOrderPdf");
       const buffer = await generateOrderPdf(order);
       const blob = new Blob([buffer], { type: "application/pdf" });
-      const url = URL.createObjectURL(blob);
-      setPdfModalUrl(url);
+      setPdfModalUrl(URL.createObjectURL(blob));
       setPdfModalOpen(true);
     } catch (err) {
       console.error("PDF generation failed:", err);
@@ -138,63 +167,15 @@ const OrdersTable = ({
     }
   };
 
-  const openDeleteConfirm = (id: number, name: string, state: string) => {
-    setDeleteOrderId(id);
-    setDeleteOrderName(name);
-    setDeleteOrderState(state);
-    setDeleteError(null);
-    setDeleteOpen(true);
-  };
-
-  const handleConfirmDelete = async (cancelFirst: boolean = false) => {
-    if (!deleteOrderId || !onDelete) return;
-    setDeleting(true);
-    setDeleteError(null);
-    try {
-      await onDelete(deleteOrderId, cancelFirst);
-      setDeleteOpen(false);
-      setDeleteOrderId(null);
-      setDeleteOrderName("");
-      setDeleteOrderState("");
-    } catch (err) {
-      setDeleteError(
-        err instanceof Error ? err.message : "Failed to delete order",
-      );
-    } finally {
-      setDeleting(false);
-    }
-  };
-  const stripHtml = (html: string) =>
-    html
-      .replace(/<[^>]*>/g, "")
-      .replace(/&nbsp;/g, " ")
-      .trim();
-
   const totalPages = Math.max(1, Math.ceil(totalCount / limit));
   const startItem = orders.length > 0 ? (currentPage - 1) * limit + 1 : 0;
   const endItem = Math.min(currentPage * limit, totalCount);
 
-  const [stateFilter, setStateFilter] = useState<
-    "all" | "draft" | "purchase" | "cancel"
-  >("all");
-
-  const filteredOrders = orders.filter((o) => {
-    if (stateFilter === "all") return true;
-    if (stateFilter === "purchase")
-      return (
-        o.state === "purchase" || o.state === "to approve" || o.state === "done"
-      );
-    return o.state === stateFilter;
-  });
-
-  const draftCount = orders.filter((o) => o.state === "draft").length;
-  const purchaseCount = orders.filter(
-    (o) =>
-      o.state === "purchase" || o.state === "to approve" || o.state === "done",
-  ).length;
-  const cancelCount = orders.filter((o) => o.state === "cancel").length;
-  const deleteNeedsCancel =
-    deleteOrderState === "purchase" || deleteOrderState === "to approve";
+  const filteredOrders = orders.filter(
+    (o) => filter === "all" || o.state === filter,
+  );
+  const countOf = (f: Filter) =>
+    f === "all" ? orders.length : orders.filter((o) => o.state === f).length;
 
   if (loading) {
     return (
@@ -205,16 +186,16 @@ const OrdersTable = ({
   }
 
   const renderOrderRow = (order: PurchaseOrder) => {
-    const linesAll = order.lines || [];
-    const line = linesAll[0];
-    const extraCount = Math.max(0, linesAll.length - 1);
+    const lines = order.lines || [];
+    const line = lines[0];
+    const extraCount = Math.max(0, lines.length - 1);
     const isExpanded = !!expandedRows[order.id];
-    const canExpand = linesAll.length > 1;
+    const submitted = order.state === "submitted";
     return (
       <Fragment key={order.id}>
         <TableRow>
           <TableCell className="w-8 p-2">
-            {canExpand ? (
+            {lines.length > 1 ? (
               <Button
                 variant="ghost"
                 size="icon"
@@ -239,8 +220,12 @@ const OrdersTable = ({
           </TableCell>
           <TableCell>{order.company?.name || "-"}</TableCell>
           <TableCell className="font-medium">{order.name}</TableCell>
+          <TableCell>
+            <Badge variant={STATE_VARIANT[order.state]}>
+              {ORDER_STATE_LABELS[order.state]}
+            </Badge>
+          </TableCell>
           <TableCell>{line?.vessel?.name || "-"}</TableCell>
-          <TableCell>{line?.region?.name || "-"}</TableCell>
           <TableCell>
             {line?.product?.name || "-"}
             {extraCount > 0 && (
@@ -251,194 +236,88 @@ const OrdersTable = ({
           </TableCell>
           <TableCell>
             {line ? `${line.product_qty} ${line.uom?.name ?? ""}` : "-"}
+            {order.state === "completed" && line?.actual_qty != null && (
+              <span className="block text-xs text-muted-foreground">
+                actual {line.actual_qty}
+              </span>
+            )}
           </TableCell>
           <TableCell className="max-w-[200px] truncate">
-            {order.notes ? stripHtml(order.notes) : "-"}
+            {order.state === "cancelled" && order.cancel_reason
+              ? `Cancelled: ${order.cancel_reason}`
+              : order.notes
+                ? stripHtml(order.notes)
+                : "-"}
           </TableCell>
           <TableCell>
             <div className="flex items-center justify-center gap-1">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => onView?.(order.id)}
-                  >
-                    <Eye className="h-4 w-4 text-muted-foreground" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>View</TooltipContent>
-              </Tooltip>
-              {onEdit && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={() => onEdit(order)}
-                    >
-                      <Pencil className="h-4 w-4 text-muted-foreground" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Edit</TooltipContent>
-                </Tooltip>
+              <IconAction tip="View" onClick={() => onView?.(order.id)}>
+                <Eye className="h-4 w-4 text-muted-foreground" />
+              </IconAction>
+              {onComplete && submitted && (
+                <IconAction
+                  tip="Complete (upload DO, actual quantity)"
+                  className="text-green-600 hover:text-green-700"
+                  onClick={() => onComplete(order.id)}
+                >
+                  <CheckCircle className="h-4 w-4" />
+                </IconAction>
               )}
-              {onConfirm && order.state === "draft" && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-green-600 hover:text-green-700"
-                      disabled={confirmingId === order.id}
-                      onClick={async () => {
-                        setConfirmingId(order.id);
-                        try {
-                          await onConfirm(order.id);
-                        } finally {
-                          setConfirmingId(null);
-                        }
-                      }}
-                    >
-                      {confirmingId === order.id ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <CheckCircle className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Confirm Order</TooltipContent>
-                </Tooltip>
+              {onCancel && submitted && (
+                <IconAction
+                  tip="Cancel PO"
+                  className="text-orange-600 hover:text-orange-700"
+                  onClick={() => onCancel(order.id)}
+                >
+                  <XCircle className="h-4 w-4" />
+                </IconAction>
               )}
-              {onCancel &&
-                order.state !== "cancel" &&
-                order.state !== "draft" && (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-orange-600 hover:text-orange-700"
-                        disabled={cancellingId === order.id}
-                        onClick={async () => {
-                          setCancellingId(order.id);
-                          try {
-                            await onCancel(order.id);
-                          } finally {
-                            setCancellingId(null);
-                          }
-                        }}
-                      >
-                        {cancellingId === order.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <XCircle className="h-4 w-4" />
-                        )}
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Cancel PO</TooltipContent>
-                  </Tooltip>
+              {onCopy && order.state === "cancelled" && (
+                <IconAction tip="Copy as new PO" onClick={() => onCopy(order)}>
+                  <Copy className="h-4 w-4 text-muted-foreground" />
+                </IconAction>
+              )}
+              <IconAction
+                tip="Preview PDF"
+                onClick={() => handleOpenPdf(order)}
+                disabled={pdfLoadingId === order.id}
+              >
+                {pdfLoadingId === order.id ? (
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                ) : (
+                  <Printer className="h-4 w-4 text-muted-foreground" />
                 )}
-              {onSetDraft && order.state === "cancel" && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-blue-600 hover:text-blue-700"
-                      disabled={draftingId === order.id}
-                      onClick={async () => {
-                        setDraftingId(order.id);
-                        try {
-                          await onSetDraft(order.id);
-                        } finally {
-                          setDraftingId(null);
-                        }
-                      }}
-                    >
-                      {draftingId === order.id ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <FileText className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Set to Draft</TooltipContent>
-                </Tooltip>
-              )}
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => handleOpenPdf(order)}
-                    disabled={pdfLoadingId === order.id}
-                  >
-                    {pdfLoadingId === order.id ? (
-                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                    ) : (
-                      <Printer className="h-4 w-4 text-muted-foreground" />
-                    )}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Preview PDF</TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => handleDownloadExcel(order)}
-                    disabled={excelLoadingId === order.id}
-                  >
-                    {excelLoadingId === order.id ? (
-                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                    ) : (
-                      <Download className="h-4 w-4 text-muted-foreground" />
-                    )}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Download Excel</TooltipContent>
-              </Tooltip>
-              {onDelete && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-destructive hover:text-destructive"
-                      onClick={() =>
-                        openDeleteConfirm(order.id, order.name, order.state)
-                      }
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Delete</TooltipContent>
-                </Tooltip>
-              )}
+              </IconAction>
+              <IconAction
+                tip="Download Excel"
+                onClick={() => handleDownloadExcel(order)}
+                disabled={excelLoadingId === order.id}
+              >
+                {excelLoadingId === order.id ? (
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                ) : (
+                  <Download className="h-4 w-4 text-muted-foreground" />
+                )}
+              </IconAction>
             </div>
           </TableCell>
         </TableRow>
         {isExpanded &&
-          linesAll.slice(1).map((extra, i) => (
-            <TableRow
-              key={`${order.id}-line-${extra.id}`}
-              className="bg-muted/30"
-            >
+          lines.slice(1).map((extra, i) => (
+            <TableRow key={`${order.id}-line-${extra.id}`} className="bg-muted/30">
               <TableCell />
-              <TableCell colSpan={3} className="text-xs text-muted-foreground">
+              <TableCell colSpan={4} className="text-xs text-muted-foreground">
                 Line {i + 2}
               </TableCell>
               <TableCell>{extra.vessel?.name || "-"}</TableCell>
-              <TableCell>{extra.region?.name || "-"}</TableCell>
               <TableCell>{extra.product?.name || "-"}</TableCell>
               <TableCell>
                 {`${extra.product_qty} ${extra.uom?.name ?? ""}`}
+                {order.state === "completed" && extra.actual_qty != null && (
+                  <span className="block text-xs text-muted-foreground">
+                    actual {extra.actual_qty}
+                  </span>
+                )}
               </TableCell>
               <TableCell />
               <TableCell />
@@ -448,59 +327,25 @@ const OrdersTable = ({
     );
   };
 
-  const filterButtons: {
-    key: typeof stateFilter;
-    label: string;
-    count: number;
-    variant: "outline" | "default";
-  }[] = [
-    {
-      key: "all",
-      label: "All",
-      count: orders.length,
-      variant: stateFilter === "all" ? "default" : "outline",
-    },
-    {
-      key: "draft",
-      label: "Draft",
-      count: draftCount,
-      variant: stateFilter === "draft" ? "default" : "outline",
-    },
-    {
-      key: "purchase",
-      label: "Confirmed",
-      count: purchaseCount,
-      variant: stateFilter === "purchase" ? "default" : "outline",
-    },
-    {
-      key: "cancel",
-      label: "Cancelled",
-      count: cancelCount,
-      variant: stateFilter === "cancel" ? "default" : "outline",
-    },
-  ];
-
   return (
     <TooltipProvider>
       <div className="space-y-4">
-        {/* Filter Buttons */}
         <div className="flex items-center gap-2">
-          {filterButtons.map((fb) => (
+          {FILTERS.map(({ key, label }) => (
             <Button
-              key={fb.key}
-              variant={fb.variant}
+              key={key}
+              variant={filter === key ? "default" : "outline"}
               size="sm"
-              onClick={() => setStateFilter(fb.key)}
+              onClick={() => setFilter(key)}
             >
-              {fb.label}
+              {label}
               <Badge variant="secondary" className="ml-1.5 px-1.5 py-0 text-xs">
-                {fb.count}
+                {countOf(key)}
               </Badge>
             </Button>
           ))}
         </div>
 
-        {/* Table */}
         <Card className="overflow-hidden">
           <Table>
             <TableHeader>
@@ -509,8 +354,8 @@ const OrdersTable = ({
                 <TableHead>Order Date</TableHead>
                 <TableHead>Company</TableHead>
                 <TableHead>PO Number</TableHead>
+                <TableHead>Status</TableHead>
                 <TableHead>Vessel</TableHead>
-                <TableHead>Region</TableHead>
                 <TableHead>Product</TableHead>
                 <TableHead>Qty</TableHead>
                 <TableHead>Notes</TableHead>
@@ -536,7 +381,6 @@ const OrdersTable = ({
           </Table>
         </Card>
 
-        {/* Pagination */}
         <Card className="flex items-center justify-between p-4">
           <p className="text-sm text-muted-foreground">
             Showing {startItem} to {endItem} of {totalCount} orders
@@ -598,88 +442,7 @@ const OrdersTable = ({
             </Button>
           </div>
         </Card>
-        {/* Delete Confirmation Dialog */}
-        <Dialog
-          open={deleteOpen}
-          onOpenChange={(open) => {
-            if (!deleting) {
-              setDeleteOpen(open);
-              if (!open) {
-                setDeleteOrderId(null);
-                setDeleteOrderName("");
-                setDeleteOrderState("");
-                setDeleteError(null);
-              }
-            }
-          }}
-        >
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Delete Order</DialogTitle>
-              <DialogDescription>
-                {deleteNeedsCancel ? (
-                  <>
-                    This order is confirmed, so it must be cancelled before it can be
-                    deleted. Would you like to cancel and delete{" "}
-                    <strong>{deleteOrderName}</strong>?
-                  </>
-                ) : (
-                  <>
-                    Are you sure you want to delete{" "}
-                    <strong>{deleteOrderName}</strong>? This action cannot be
-                    undone.
-                  </>
-                )}
-              </DialogDescription>
-            </DialogHeader>
-            {deleteError && (
-              <div className="flex items-center gap-2 rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
-                <AlertCircle className="h-4 w-4 shrink-0" />
-                {deleteError}
-              </div>
-            )}
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => setDeleteOpen(false)}
-                disabled={deleting}
-              >
-                Cancel
-              </Button>
-              {deleteNeedsCancel ? (
-                <Button
-                  variant="destructive"
-                  onClick={() => handleConfirmDelete(true)}
-                  disabled={deleting}
-                >
-                  {deleting ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" /> Processing...
-                    </>
-                  ) : (
-                    "Cancel & Delete"
-                  )}
-                </Button>
-              ) : (
-                <Button
-                  variant="destructive"
-                  onClick={() => handleConfirmDelete(false)}
-                  disabled={deleting}
-                >
-                  {deleting ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" /> Deleting...
-                    </>
-                  ) : (
-                    "Delete"
-                  )}
-                </Button>
-              )}
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
 
-        {/* PDF Preview Modal */}
         <PdfPreviewModal
           pdfUrl={pdfModalUrl}
           open={pdfModalOpen}

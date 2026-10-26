@@ -1,14 +1,14 @@
 import { useEffect, useState } from "react";
 import DOMPurify from "dompurify";
 import {
-  LINE_STATUS_LABELS,
-  ordersService,
+  ORDER_STATE_LABELS,
   ORDER_TYPE_LABELS,
-  type LineStatus,
+  ordersService,
+  type OrderState,
   type PurchaseOrder,
 } from "@/services";
 import { useAuth } from "@/contexts/useAuth";
-import OrderApprovals from "@/components/orders/OrderApprovals";
+import OrderDocuments from "@/components/orders/OrderDocuments";
 import OrderRemarks from "@/components/orders/OrderRemarks";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,53 +33,87 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  Eye,
-  Loader2,
-  Package,
-  User,
-  Ship,
+  AlertCircle,
   Calendar,
+  CheckCircle,
+  Copy,
+  Eye,
   FileText,
   Hash,
-  CheckCircle,
+  Loader2,
+  Package,
+  Paperclip,
+  Ship,
+  User,
   XCircle,
-  Trash2,
-  AlertCircle,
 } from "lucide-react";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 
 interface ViewOrderModalProps {
   orderId: number | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onConfirm?: (orderId: number) => Promise<void>;
-  onCancel?: (orderId: number) => Promise<void>;
-  onDelete?: (orderId: number) => Promise<void>;
-  onSetDraft?: (orderId: number) => Promise<void>;
+  onComplete?: (orderId: number) => void;
+  onCancel?: (orderId: number) => void;
+  onCopy?: (order: PurchaseOrder) => void;
+  /** Called after something inside the dialog changed the order. */
   onRefreshList?: () => void;
 }
+
+const STATE_VARIANT: Record<
+  OrderState,
+  "info" | "success" | "destructive"
+> = {
+  submitted: "info",
+  completed: "success",
+  cancelled: "destructive",
+};
+
+const formatDate = (iso: string | null) =>
+  iso
+    ? new Date(iso).toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : "-";
+
+const formatCurrency = (amount: number) =>
+  new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR" }).format(
+    amount,
+  );
+
+const formatQty = (n: number) =>
+  new Intl.NumberFormat("id-ID", { maximumFractionDigits: 4 }).format(n);
 
 const ViewOrderModal = ({
   orderId,
   open,
   onOpenChange,
-  onConfirm,
+  onComplete,
   onCancel,
-  onDelete,
-  onSetDraft,
+  onCopy,
   onRefreshList,
 }: ViewOrderModalProps) => {
   const { canWrite } = useAuth();
   const [order, setOrder] = useState<PurchaseOrder | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [actionError, setActionError] = useState<string | null>(null);
+
+  const fetchOrder = async (id: number) => {
+    try {
+      setLoading(true);
+      setError(null);
+      setOrder(await ordersService.getOrderById(id));
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to fetch order details",
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (open && orderId) {
@@ -87,121 +121,22 @@ const ViewOrderModal = ({
     } else if (!open) {
       setOrder(null);
       setError(null);
-      setActionError(null);
     }
   }, [open, orderId]);
 
-  const fetchOrder = async (id: number) => {
-    try {
-      setLoading(true);
-      setError(null);
-      const response = await ordersService.getOrderById(id);
-      setOrder(response);
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to fetch order details",
-      );
-      console.error("Error fetching order:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const getStatusVariant = (
-    state: string,
-  ): "success" | "warning" | "info" | "destructive" | "secondary" => {
-    switch (state) {
-      case "purchase":
-      case "done":
-        return "success";
-      case "to approve":
-        return "warning";
-      case "draft":
-        return "info";
-      case "cancel":
-        return "destructive";
-      default:
-        return "secondary";
-    }
-  };
-
-  const getStatusLabel = (state: string) => {
-    const statusMap: Record<string, string> = {
-      draft: "Draft",
-      "to approve": "Pending",
-      purchase: "Confirmed",
-      done: "Completed",
-      cancel: "Cancelled",
-    };
-    return statusMap[state] || state;
-  };
-
-  const handleAction = async (
-    action: "confirm" | "cancel" | "delete" | "draft",
-    handler?: (id: number) => Promise<void>,
-  ) => {
-    if (!handler || !order) return;
-    setActionLoading(action);
-    setActionError(null);
-    try {
-      await handler(order.id);
-      if (action === "delete") {
-        onRefreshList?.();
-        onOpenChange(false);
-      } else {
-        // Re-fetch order to reflect new state
-        await fetchOrder(order.id);
-        onRefreshList?.();
-      }
-    } catch (err) {
-      setActionError(
-        err instanceof Error ? err.message : `Failed to ${action} order`,
-      );
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
-  // Reload the open order and the list behind the dialog.
   const reload = async () => {
     if (!order) return;
     await fetchOrder(order.id);
     onRefreshList?.();
   };
 
-  const handleLineStatus = async (lineId: number, status: LineStatus) => {
-    setActionError(null);
-    try {
-      await ordersService.setLineStatus(lineId, status);
-      await reload();
-    } catch (err) {
-      setActionError(
-        err instanceof Error ? err.message : "Failed to change line status",
-      );
-    }
-  };
-
-  const formatDate = (dateString: string) => {
-    if (!dateString) return "-";
-    return new Date(dateString).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("id-ID", {
-      style: "currency",
-      currency: "IDR",
-    }).format(amount);
-  };
+  const isSubmitted = order?.state === "submitted";
+  const isCompleted = order?.state === "completed";
+  const isCancelled = order?.state === "cancelled";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] p-0">
+      <DialogContent className="max-h-[90vh] max-w-4xl p-0">
         <DialogHeader className="px-6 pt-6">
           <DialogTitle className="flex items-center gap-2">
             <Eye className="h-5 w-5" />
@@ -214,7 +149,7 @@ const ViewOrderModal = ({
 
         <Separator />
 
-        {loading && (
+        {loading && !order && (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
             <span className="ml-2 text-muted-foreground">
@@ -230,46 +165,46 @@ const ViewOrderModal = ({
           </div>
         )}
 
-        {actionError && (
-          <div className="mx-6 my-4 flex items-center gap-2 rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
-            <AlertCircle className="h-4 w-4" />
-            {actionError}
-          </div>
-        )}
-
-        {order && !loading && (
+        {order && (
           <ScrollArea className="max-h-[calc(90vh-200px)]">
-            <div className="px-6 py-4 space-y-6">
-              {/* Order Header Info */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-4">
+            <div className="space-y-6 px-6 py-4">
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                <div className="space-y-2">
                   <div className="flex items-center gap-2">
                     <Hash className="h-4 w-4 text-muted-foreground" />
                     <Label className="text-muted-foreground">PO Number</Label>
                   </div>
                   <p className="text-lg font-semibold">{order.name}</p>
                 </div>
-
-                <div className="space-y-4">
+                <div className="space-y-2">
                   <div className="flex items-center gap-2">
                     <FileText className="h-4 w-4 text-muted-foreground" />
                     <Label className="text-muted-foreground">Status</Label>
                   </div>
-                  <Badge variant={getStatusVariant(order.state)}>
-                    {getStatusLabel(order.state)}
+                  <Badge variant={STATE_VARIANT[order.state]}>
+                    {ORDER_STATE_LABELS[order.state]}
                   </Badge>
                 </div>
               </div>
 
+              {isCancelled && (
+                <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-sm">
+                  <p className="font-semibold text-destructive">
+                    Cancelled {formatDate(order.cancelled_at)}
+                    {order.canceller ? ` by ${order.canceller.name}` : ""}
+                  </p>
+                  <p className="mt-1">Reason: {order.cancel_reason}</p>
+                </div>
+              )}
+
               <Separator />
 
-              {/* Customer & Company Info */}
               <div>
-                <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                <h4 className="mb-3 flex items-center gap-2 text-sm font-semibold">
                   <User className="h-4 w-4" />
                   Customer & Company
                 </h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div className="space-y-2">
                     <Label className="text-muted-foreground">Customer</Label>
                     <Input
@@ -279,9 +214,17 @@ const ViewOrderModal = ({
                     />
                   </div>
                   <div className="space-y-2">
+                    <Label className="text-muted-foreground">Company</Label>
+                    <Input
+                      value={order.company?.name || "-"}
+                      readOnly
+                      className="bg-muted"
+                    />
+                  </div>
+                  <div className="space-y-2">
                     <Label className="text-muted-foreground">Order Type</Label>
                     <Input
-                      value={ORDER_TYPE_LABELS[order.order_type] || order.order_type || "-"}
+                      value={ORDER_TYPE_LABELS[order.order_type] || order.order_type}
                       readOnly
                       className="bg-muted"
                     />
@@ -291,13 +234,12 @@ const ViewOrderModal = ({
 
               <Separator />
 
-              {/* Dates */}
               <div>
-                <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                <h4 className="mb-3 flex items-center gap-2 text-sm font-semibold">
                   <Calendar className="h-4 w-4" />
                   Dates
                 </h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div className="space-y-2">
                     <Label className="text-muted-foreground">Order Date</Label>
                     <Input
@@ -307,18 +249,19 @@ const ViewOrderModal = ({
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-muted-foreground">Confirmed</Label>
+                    <Label className="text-muted-foreground">
+                      Submitted by
+                    </Label>
                     <Input
-                      value={
-                        order.date_approve ? formatDate(order.date_approve) : "-"
-                      }
+                      value={order.creator?.name ?? "-"}
                       readOnly
                       className="bg-muted"
                     />
                   </div>
                   <div className="space-y-2">
                     <Label className="text-muted-foreground">
-                      Vendor {order.option_order === "invoice" ? "Invoice" : "Quotation"}
+                      Vendor{" "}
+                      {order.option_order === "invoice" ? "Invoice" : "Quotation"}
                     </Label>
                     <Input
                       value={
@@ -338,47 +281,65 @@ const ViewOrderModal = ({
                   <div className="space-y-2">
                     <Label className="text-muted-foreground">Bunker Date</Label>
                     <Input
-                      value={
-                        order.date_bunker ? formatDate(order.date_bunker) : "-"
-                      }
+                      value={formatDate(order.date_bunker)}
                       readOnly
                       className="bg-muted"
                     />
                   </div>
+                  {isCompleted && (
+                    <div className="space-y-2 md:col-span-2">
+                      <Label className="text-muted-foreground">Completed</Label>
+                      <Input
+                        value={`${formatDate(order.completed_at)}${
+                          order.completer ? ` by ${order.completer.name}` : ""
+                        }`}
+                        readOnly
+                        className="bg-muted"
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
 
               <Separator />
 
-              {/* Order Lines */}
               <div>
-                <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                <h4 className="mb-3 flex items-center gap-2 text-sm font-semibold">
                   <Package className="h-4 w-4" />
                   Order Items
                 </h4>
-                <div className="border rounded-md">
+                <div className="rounded-md border">
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-muted/50 hover:bg-muted/50">
                         <TableHead>Product</TableHead>
                         <TableHead>Vessel</TableHead>
-                        <TableHead className="text-right">Quantity</TableHead>
+                        <TableHead className="text-right">Ordered</TableHead>
+                        {isCompleted && (
+                          <>
+                            <TableHead className="text-right">Actual</TableHead>
+                            <TableHead className="text-right">
+                              Difference
+                            </TableHead>
+                          </>
+                        )}
                         <TableHead className="text-right">Unit Price</TableHead>
                         <TableHead className="text-right">Subtotal</TableHead>
-                        <TableHead>Status</TableHead>
+                        {isCompleted && (
+                          <TableHead className="text-right">
+                            Actual Amount
+                          </TableHead>
+                        )}
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {order.lines && order.lines.length > 0 ? (
-                        order.lines.map((line) => (
-                          <TableRow
-                            key={line.id}
-                            className={
-                              line.status_list === "cancel"
-                                ? "text-muted-foreground line-through"
-                                : undefined
-                            }
-                          >
+                      {order.lines.map((line) => {
+                        const diff =
+                          line.actual_qty === null
+                            ? null
+                            : line.actual_qty - line.product_qty;
+                        return (
+                          <TableRow key={line.id}>
                             <TableCell>{line.product?.name || "-"}</TableCell>
                             <TableCell>
                               <div className="flex items-center gap-2">
@@ -387,52 +348,44 @@ const ViewOrderModal = ({
                               </div>
                             </TableCell>
                             <TableCell className="text-right">
-                              {line.product_qty || "-"}
+                              {formatQty(line.product_qty)} {line.uom?.name}
                             </TableCell>
+                            {isCompleted && (
+                              <>
+                                <TableCell className="text-right">
+                                  {line.actual_qty === null
+                                    ? "-"
+                                    : `${formatQty(line.actual_qty)} ${line.uom?.name ?? ""}`}
+                                </TableCell>
+                                <TableCell
+                                  className={`text-right ${
+                                    diff && diff !== 0
+                                      ? "font-medium text-orange-600"
+                                      : "text-muted-foreground"
+                                  }`}
+                                >
+                                  {diff === null
+                                    ? "-"
+                                    : `${diff > 0 ? "+" : ""}${formatQty(diff)}`}
+                                </TableCell>
+                              </>
+                            )}
                             <TableCell className="text-right">
                               {formatCurrency(line.price_unit || 0)}
                             </TableCell>
                             <TableCell className="text-right">
                               {formatCurrency(line.price_subtotal || 0)}
                             </TableCell>
-                            <TableCell className="no-underline">
-                              {canWrite &&
-                              (order.state === "draft" ||
-                                order.state === "purchase") ? (
-                                <select
-                                  className="h-8 rounded-md border border-input bg-background px-2 text-xs"
-                                  value={line.status_list}
-                                  onChange={(e) =>
-                                    handleLineStatus(
-                                      line.id,
-                                      e.target.value as LineStatus,
-                                    )
-                                  }
-                                >
-                                  {(
-                                    Object.keys(LINE_STATUS_LABELS) as LineStatus[]
-                                  ).map((key) => (
-                                    <option key={key} value={key}>
-                                      {LINE_STATUS_LABELS[key]}
-                                    </option>
-                                  ))}
-                                </select>
-                              ) : (
-                                LINE_STATUS_LABELS[line.status_list]
-                              )}
-                            </TableCell>
+                            {isCompleted && (
+                              <TableCell className="text-right">
+                                {line.actual_subtotal === null
+                                  ? "-"
+                                  : formatCurrency(line.actual_subtotal)}
+                              </TableCell>
+                            )}
                           </TableRow>
-                        ))
-                      ) : (
-                        <TableRow>
-                          <TableCell
-                            colSpan={6}
-                            className="h-24 text-center text-muted-foreground"
-                          >
-                            No order items found.
-                          </TableCell>
-                        </TableRow>
-                      )}
+                        );
+                      })}
                     </TableBody>
                   </Table>
                 </div>
@@ -458,26 +411,45 @@ const ViewOrderModal = ({
                     </span>
                   </div>
                   <div>
-                    Total:{" "}
+                    Total (ordered):{" "}
                     <span className="ml-1 text-base font-semibold text-foreground">
                       {formatCurrency(order.amount_total || 0)}
                     </span>
                   </div>
+                  {isCompleted && order.actual_amount !== null && (
+                    <div>
+                      Actual amount (delivered x unit price):{" "}
+                      <span className="ml-1 text-base font-semibold text-foreground">
+                        {formatCurrency(order.actual_amount)}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
 
               <Separator />
-              <OrderApprovals order={order} onChanged={reload} />
+
+              <div>
+                <h4 className="mb-3 flex items-center gap-2 text-sm font-semibold">
+                  <Paperclip className="h-4 w-4" />
+                  Delivery Order (DO)
+                </h4>
+                <OrderDocuments
+                  orderId={order.id}
+                  documents={order.documents}
+                  canEdit={canWrite && isSubmitted}
+                  onChanged={reload}
+                />
+              </div>
 
               <Separator />
               <OrderRemarks order={order} onChanged={reload} />
 
-              {/* Notes */}
               {order.notes && (
                 <>
                   <Separator />
                   <div>
-                    <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                    <h4 className="mb-3 flex items-center gap-2 text-sm font-semibold">
                       <FileText className="h-4 w-4" />
                       Notes
                     </h4>
@@ -498,80 +470,33 @@ const ViewOrderModal = ({
 
         <DialogFooter className="px-6 pb-6">
           <div className="flex w-full items-center justify-between">
-            <TooltipProvider>
-              <div className="flex items-center gap-2">
-                {onConfirm && order && order.state === "draft" && (
-                  <Button
-                    variant="default"
-                    className="bg-green-600 hover:bg-green-700"
-                    disabled={!!actionLoading}
-                    onClick={() => handleAction("confirm", onConfirm)}
-                  >
-                    {actionLoading === "confirm" ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <CheckCircle className="h-4 w-4" />
-                    )}
-                    Confirm
-                  </Button>
-                )}
-                {onSetDraft && order && order.state === "cancel" && (
-                  <Button
-                    variant="outline"
-                    className="border-blue-500 text-blue-600 hover:bg-blue-50 hover:text-blue-700"
-                    disabled={!!actionLoading}
-                    onClick={() => handleAction("draft", onSetDraft)}
-                  >
-                    {actionLoading === "draft" ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <FileText className="h-4 w-4" />
-                    )}
-                    Set to Draft
-                  </Button>
-                )}
-                {onCancel && order && order.state !== "cancel" && (
-                  <Button
-                    variant="outline"
-                    className="border-orange-500 text-orange-600 hover:bg-orange-50 hover:text-orange-700"
-                    disabled={!!actionLoading}
-                    onClick={() => handleAction("cancel", onCancel)}
-                  >
-                    {actionLoading === "cancel" ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <XCircle className="h-4 w-4" />
-                    )}
-                    Cancel PO
-                  </Button>
-                )}
-                {onDelete && order && (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <span>
-                        <Button
-                          variant="destructive"
-                          disabled={!!actionLoading || order.state !== "cancel"}
-                          onClick={() => handleAction("delete", onDelete)}
-                        >
-                          {actionLoading === "delete" ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <Trash2 className="h-4 w-4" />
-                          )}
-                          Delete
-                        </Button>
-                      </span>
-                    </TooltipTrigger>
-                    {order.state !== "cancel" && (
-                      <TooltipContent>
-                        PO must be cancelled before it can be deleted
-                      </TooltipContent>
-                    )}
-                  </Tooltip>
-                )}
-              </div>
-            </TooltipProvider>
+            <div className="flex items-center gap-2">
+              {order && canWrite && isSubmitted && onComplete && (
+                <Button
+                  className="bg-green-600 hover:bg-green-700"
+                  onClick={() => onComplete(order.id)}
+                >
+                  <CheckCircle className="h-4 w-4" />
+                  Complete
+                </Button>
+              )}
+              {order && canWrite && isSubmitted && onCancel && (
+                <Button
+                  variant="outline"
+                  className="border-orange-500 text-orange-600 hover:bg-orange-50 hover:text-orange-700"
+                  onClick={() => onCancel(order.id)}
+                >
+                  <XCircle className="h-4 w-4" />
+                  Cancel PO
+                </Button>
+              )}
+              {order && canWrite && isCancelled && onCopy && (
+                <Button variant="outline" onClick={() => onCopy(order)}>
+                  <Copy className="h-4 w-4" />
+                  Copy as new PO
+                </Button>
+              )}
+            </div>
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Close
             </Button>
