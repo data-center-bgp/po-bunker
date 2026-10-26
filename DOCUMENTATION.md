@@ -447,7 +447,7 @@ Deleting is a plain `DELETE`, allowed only for draft or cancelled orders.
 
 ### Reference data
 
-Companies, partners and regions can be created and edited from the app. Vessels, products, code budgets, units of measure, categories and business units are read-only in the app and are managed in Supabase (admin only; see `supabase/README.md` for CSV import).
+Companies, partners and regions can be created and edited from the app. **Vessels** are synced from the company SMS vessel API: an admin presses *Sync from SMS* on the Vessels page (an Edge Function holds the API token; vessels that disappear from the API are deactivated, never deleted; inactive vessels can no longer be picked on new orders). Products, code budgets, units of measure, categories and business units are read-only in the app and are managed in Supabase (admin only; see `supabase/README.md` for CSV import).
 
 ### Export
 

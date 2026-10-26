@@ -963,7 +963,15 @@ const OrderForm = ({
                                       No vessel found.
                                     </CommandEmpty>
                                     <CommandGroup>
-                                      {vessels.map((vessel) => (
+                                      {vessels
+                                        .filter(
+                                          (vessel) =>
+                                            vessel.active ||
+                                            lines.some(
+                                              (l) => l.vesselId === vessel.id.toString(),
+                                            ),
+                                        )
+                                        .map((vessel) => (
                                         <CommandItem
                                           key={vessel.id}
                                           value={`${vesselLabel(vessel)} ${vessel.code ?? ""}`}

@@ -1,5 +1,10 @@
 import { useState, useEffect, useMemo } from "react";
-import { lookupsService, type Vessel } from "@/services";
+import {
+  lookupsService,
+  type Vessel,
+  type VesselSyncResult,
+} from "@/services";
+import { useAuth } from "@/contexts/useAuth";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,34 +16,64 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { AlertCircle, Search, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  AlertCircle,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  Loader2,
+  RefreshCw,
+  Search,
+} from "lucide-react";
 
 const PAGE_SIZE = 20;
 
 const VesselApiGate = () => {
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
+  const [syncing, setSyncing] = useState(false);
+  const [syncResult, setSyncResult] = useState<VesselSyncResult | null>(null);
   const [vessels, setVessels] = useState<Vessel[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
 
+  const fetchVessels = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      setVessels(await lookupsService.getVessels());
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to fetch vessels");
+      setVessels([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchVessels = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        setVessels(await lookupsService.getVessels());
-      } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Failed to fetch vessels",
-        );
-        setVessels([]);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchVessels();
   }, []);
+
+  const handleSync = async () => {
+    setSyncing(true);
+    setSyncResult(null);
+    setError(null);
+    try {
+      setSyncResult(await lookupsService.syncVesselsFromSms());
+      await fetchVessels();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to sync vessels");
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const lastSynced = vessels.reduce<string | null>(
+    (latest, v) => (v.synced_at && (!latest || v.synced_at > latest) ? v.synced_at : latest),
+    null,
+  );
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -67,12 +102,42 @@ const VesselApiGate = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight">Shipping Vessels</h2>
-        <p className="text-muted-foreground">
-          Browse and search shipping vessels.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight">Shipping Vessels</h2>
+          <p className="text-muted-foreground">
+            Browse and search shipping vessels.
+            {lastSynced &&
+              ` Last synced ${new Date(lastSynced).toLocaleString("en-GB", {
+                day: "2-digit",
+                month: "short",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+              })}.`}
+          </p>
+        </div>
+        {isAdmin && (
+          <Button onClick={handleSync} disabled={syncing}>
+            {syncing ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4" />
+            )}
+            Sync from SMS
+          </Button>
+        )}
       </div>
+
+      {syncResult && (
+        <div className="flex items-center gap-2 rounded-lg border border-green-600/40 bg-green-600/10 p-3 text-sm text-green-700">
+          <CheckCircle2 className="h-4 w-4 shrink-0" />
+          Synced {syncResult.total} vessel(s): {syncResult.created} new,{" "}
+          {syncResult.updated + syncResult.adopted} updated,{" "}
+          {syncResult.deactivated} deactivated
+          {syncResult.skipped > 0 && `, ${syncResult.skipped} skipped`}.
+        </div>
+      )}
 
       {/* Search */}
       <div className="relative max-w-md">
@@ -122,9 +187,9 @@ const VesselApiGate = () => {
                     <TableHead>Code</TableHead>
                     <TableHead>Name</TableHead>
                     <TableHead>Type</TableHead>
-                    <TableHead>Operator</TableHead>
-                    <TableHead>Owner</TableHead>
-                    <TableHead>Business Unit</TableHead>
+                    <TableHead>Fleet</TableHead>
+                    <TableHead>Operation Head</TableHead>
+                    <TableHead>Company</TableHead>
                     <TableHead>Gross Tonnage</TableHead>
                     <TableHead>Call Sign</TableHead>
                     <TableHead>IMO</TableHead>
@@ -137,9 +202,11 @@ const VesselApiGate = () => {
                       <TableCell>{v.code || "-"}</TableCell>
                       <TableCell className="font-medium">{v.name}</TableCell>
                       <TableCell>{v.type?.name || "-"}</TableCell>
-                      <TableCell>{v.operator?.name || "-"}</TableCell>
-                      <TableCell>{v.owner?.name || "-"}</TableCell>
-                      <TableCell>{v.business_unit?.name || "-"}</TableCell>
+                      <TableCell>{v.fleet_name || "-"}</TableCell>
+                      <TableCell>{v.operation_head_name || "-"}</TableCell>
+                      <TableCell title={v.headcount_name ?? undefined}>
+                        {v.headcount_code || "-"}
+                      </TableCell>
                       <TableCell>
                         {v.gross_tonage || v.gross_tonage === 0
                           ? v.gross_tonage

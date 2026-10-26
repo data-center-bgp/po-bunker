@@ -86,6 +86,30 @@ Totals are recomputed in the database (migration 0005): `untaxed = active lines 
   Levels: `first` = Corporate Logistic Admin, `second` = Corporate Logistic, `third` = Business Unit PIC.
 - Company logos are uploaded on the Companies page. Remarks live in `purchase_order_remarks` and can change in any order state.
 
+## Vessels: sync from the company SMS API (migration 0006)
+
+Vessels come from `https://sms.barokahmarineconsulting.com/api/csbd/ships`. An admin presses **Sync from SMS** on the
+Vessels page; that calls the Edge Function `po-bunker-sync-vessels`, which
+
+1. checks the caller is an active PO Bunker admin,
+2. reads the API token from the project secret `VESSEL_API_TOKEN` (fallback `API_VESSEL_PMS_BAROKAH`) and fetches the ships,
+3. hands them to `po_bunker.sync_vessels()` (service_role only), which upserts by the API id (`vessels.external_id`),
+   creates/matches vessel types by code, and deactivates (never deletes) vessels that disappeared from the API.
+
+Not touched by the sync, so they can be filled by hand: `code` (printed in the PO's Vessel column; the PDF/Excel show the
+name while it is empty), tonnage, IMO, call sign, operator, owner. A vessel added by hand with the same name is adopted
+instead of duplicated. The API's `headcount` (company code/name), fleet and operation head are stored as text.
+
+The token never reaches the browser or the repo. Set or rotate it with
+`supabase secrets set VESSEL_API_TOKEN=... --project-ref mgxdvnnvruoyhnzgrtur`. Deploy the function (CGA also has other
+apps' functions, including one called `sync-vessels`; do not reuse that name):
+
+```bash
+supabase functions deploy po-bunker-sync-vessels --no-verify-jwt --use-api --project-ref mgxdvnnvruoyhnzgrtur
+```
+
+JWT verification is done inside the function (CGA uses the new publishable keys), so keep `--no-verify-jwt`.
+
 ## Importing master data
 
 Fill the CSVs in `import-templates/` and import them with Studio's table
@@ -96,4 +120,4 @@ resolve, using the ids Postgres assigns (look them up after each import):
 2. `regions` (parents before children)
 3. `companies` (fill `code_company_general`, needed for PO numbers), `partners`
 4. `products` (needs category / uom / code budget ids)
-5. `vessels` (needs vessel type / business unit ids; `operator_id` and `owner_id` are company ids; `code` is printed on the PO)
+5. `vessels` normally come from the SMS sync (above). Manual import is still possible (needs vessel type / business unit ids; `operator_id` and `owner_id` are company ids; `code` is printed on the PO)

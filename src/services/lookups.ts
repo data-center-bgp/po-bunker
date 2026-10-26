@@ -1,6 +1,6 @@
 import { supabase } from "@/lib/supabase";
 import { unwrap } from "./helpers";
-import type { CodeBudget, Product, Vessel } from "./types";
+import type { CodeBudget, Product, Vessel, VesselSyncResult } from "./types";
 
 const VESSEL_SELECT =
   "*, type:type_id(id,name), operator:operator_id(id,name), owner:owner_id(id,name), business_unit:business_unit_id(id,name)";
@@ -18,6 +18,26 @@ export const lookupsService = {
         .overrideTypes<Vessel[], { merge: false }>(),
       "Failed to fetch vessels",
     ),
+
+  // Runs the po-bunker-sync-vessels Edge Function (admins only). The SMS API
+  // token stays in a Supabase secret; the browser never sees it.
+  syncVesselsFromSms: async (): Promise<VesselSyncResult> => {
+    const { data, error } = await supabase.functions.invoke(
+      "po-bunker-sync-vessels",
+      { method: "POST" },
+    );
+    if (error) {
+      let message = "Failed to sync vessels";
+      try {
+        const body = await (error as { context?: Response }).context?.json();
+        if (body?.error) message = String(body.error);
+      } catch {
+        // keep the generic message
+      }
+      throw new Error(message);
+    }
+    return data as VesselSyncResult;
+  },
 
   getProducts: async (): Promise<Product[]> =>
     unwrap(

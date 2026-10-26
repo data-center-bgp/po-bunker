@@ -163,7 +163,14 @@ export interface PartnerInput {
 
 export interface Vessel {
   id: number;
+  /** id in the company SMS vessel API (set by the sync). */
+  external_id: number | null;
   name: string;
+  fleet_name: string | null;
+  operation_head_name: string | null;
+  headcount_code: string | null;
+  headcount_name: string | null;
+  synced_at: string | null;
   /** Short code printed in the Vessel column of the PO PDF/Excel. */
   code: string | null;
   type_id: number | null;
@@ -179,6 +186,18 @@ export interface Vessel {
   operator: Ref | null;
   owner: Ref | null;
   business_unit: Ref | null;
+}
+
+export interface VesselSyncResult {
+  ok: boolean;
+  pages: number;
+  total: number;
+  created: number;
+  updated: number;
+  adopted: number;
+  deactivated: number;
+  skipped: number;
+  types_created: number;
 }
 
 export interface Product {
