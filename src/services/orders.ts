@@ -63,7 +63,7 @@ export const ordersService = {
       .order("id", BY_DOC_ID)
       .range(from, from + limit - 1)
       .overrideTypes<PurchaseOrder[], { merge: false }>();
-    if (error) throw toError(error, "Failed to fetch orders");
+    if (error) throw toError(error, "Gagal memuat daftar PO");
     return { orders: data ?? [], totalCount: count ?? data?.length ?? 0 };
   },
 
@@ -77,7 +77,7 @@ export const ordersService = {
         .order("id", BY_REMARK_ID)
         .order("id", BY_DOC_ID)
         .single<PurchaseOrder>(),
-      "Failed to fetch order",
+      "Gagal memuat PO",
     ),
 
   // Submits a new order. A submitted order is locked: to fix a mistake, cancel
@@ -91,7 +91,7 @@ export const ordersService = {
       p_header: header,
       p_lines: lines,
     });
-    if (error) throw toError(error, "Failed to create order");
+    if (error) throw toError(error, "Gagal membuat PO");
     return (data as { id: number }).id;
   },
 
@@ -104,7 +104,7 @@ export const ordersService = {
       p_id: id,
       p_lines: quantities,
     });
-    if (error) throw toError(error, "Failed to complete order");
+    if (error) throw toError(error, "Gagal menyelesaikan PO");
   },
 
   cancelOrder: async (id: number, reason: string): Promise<void> => {
@@ -112,17 +112,17 @@ export const ordersService = {
       p_id: id,
       p_reason: reason,
     });
-    if (error) throw toError(error, "Failed to cancel order");
+    if (error) throw toError(error, "Gagal membatalkan PO");
   },
 
   // --- Delivery Order files (only while the order is submitted) ---------------
 
   uploadDocument: async (orderId: number, file: File): Promise<void> => {
     if (!DOCUMENT_TYPES.includes(file.type)) {
-      throw new Error("Please choose a PDF, JPG or PNG file.");
+      throw new Error("Pilih file PDF, JPG, atau PNG.");
     }
     if (file.size > DOCUMENT_MAX_BYTES) {
-      throw new Error("The file must be smaller than 5 MB.");
+      throw new Error("Ukuran file harus kurang dari 5 MB.");
     }
     const path = `documents/${orderId}/${Date.now()}-${safeFileName(file.name)}`;
     await storageService.uploadFile(path, file);
@@ -136,7 +136,7 @@ export const ordersService = {
     });
     if (error) {
       await storageService.removeFile(path);
-      throw toError(error, "Failed to attach the document");
+      throw toError(error, "Gagal melampirkan dokumen");
     }
   },
 
@@ -146,9 +146,9 @@ export const ordersService = {
       .delete()
       .eq("id", doc.id)
       .select("id");
-    unwrapVoid({ error }, "Failed to delete the document");
+    unwrapVoid({ error }, "Gagal menghapus dokumen");
     if (!data || data.length === 0) {
-      throw new Error("The document can no longer be deleted.");
+      throw new Error("Dokumen ini tidak dapat dihapus lagi.");
     }
     await storageService.removeFile(doc.file_path);
   },
@@ -168,7 +168,7 @@ export const ordersService = {
         color,
         remark_date: remarkDate,
       }),
-      "Failed to add remark",
+      "Gagal menambahkan remark",
     );
   },
 
@@ -178,9 +178,9 @@ export const ordersService = {
       .delete()
       .eq("id", remarkId)
       .select("id");
-    unwrapVoid({ error }, "Failed to delete remark");
+    unwrapVoid({ error }, "Gagal menghapus remark");
     if (!data || data.length === 0) {
-      throw new Error("The remark could not be deleted.");
+      throw new Error("Remark tidak dapat dihapus.");
     }
   },
 };

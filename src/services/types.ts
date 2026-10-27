@@ -11,9 +11,9 @@ export interface Ref {
 export type OrderState = "submitted" | "completed" | "cancelled";
 
 export const ORDER_STATE_LABELS: Record<OrderState, string> = {
-  submitted: "Submitted",
-  completed: "Completed",
-  cancelled: "Cancelled",
+  submitted: "Diajukan",
+  completed: "Selesai",
+  cancelled: "Dibatalkan",
 };
 export type OrderType = "bunker_fuel" | "bunker_water" | "logistic";
 export type Priority = "low" | "medium" | "high";
@@ -31,16 +31,16 @@ export const APPROVAL_LEVELS: { level: ApprovalLevel; label: string }[] = [
 ];
 
 export const LINE_STATUS_LABELS: Record<LineStatus, string> = {
-  onprogress: "On progress",
-  hold: "Hold",
-  cancel: "Cancelled",
-  close: "Closed",
+  onprogress: "Berjalan",
+  hold: "Ditahan",
+  cancel: "Dibatalkan",
+  close: "Ditutup",
 };
 
 export const ORDER_TYPE_LABELS: Record<OrderType, string> = {
-  bunker_fuel: "Bunker Fuel",
-  bunker_water: "Bunker Fresh Water",
-  logistic: "Logistic",
+  bunker_fuel: "Bunker BBM",
+  bunker_water: "Bunker Air Tawar",
+  logistic: "Logistik",
 };
 
 export interface Profile {

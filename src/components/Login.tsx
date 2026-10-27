@@ -28,18 +28,18 @@ interface FormErrors {
 const features = [
   {
     icon: FileText,
-    title: "Purchase order management",
-    description: "Create, track, and approve orders end to end.",
+    title: "Manajemen purchase order",
+    description: "Buat dan pantau PO dari pengajuan hingga selesai.",
   },
   {
     icon: Anchor,
-    title: "Fleet-wide bunkering",
-    description: "Manage supply orders across every vessel you operate.",
+    title: "Bunker untuk seluruh armada",
+    description: "Kelola pemesanan suplai untuk setiap kapal yang Anda operasikan.",
   },
   {
     icon: MapPin,
-    title: "Regional oversight",
-    description: "Coordinate partners and companies across all regions.",
+    title: "Pengawasan antarwilayah",
+    description: "Koordinasikan mitra dan perusahaan di seluruh wilayah.",
   },
 ];
 
@@ -62,15 +62,15 @@ const Login = () => {
     const newErrors: FormErrors = {};
 
     if (!formData.email.trim()) {
-      newErrors.email = "Email is required";
+      newErrors.email = "Email wajib diisi";
     } else if (!validateEmail(formData.email)) {
-      newErrors.email = "Please enter a valid email address";
+      newErrors.email = "Masukkan alamat email yang valid";
     }
 
     if (!formData.password) {
-      newErrors.password = "Password is required";
+      newErrors.password = "Kata sandi wajib diisi";
     } else if (formData.password.length < 6) {
-      newErrors.password = "Password must be at least 6 characters long";
+      newErrors.password = "Kata sandi minimal 6 karakter";
     }
 
     setErrors(newErrors);
@@ -100,7 +100,7 @@ const Login = () => {
       console.error("Login error:", error);
       setErrors({
         email:
-          error instanceof Error ? error.message : "Invalid email or password",
+          error instanceof Error ? error.message : "Email atau kata sandi salah",
       });
     } finally {
       setIsLoading(false);
@@ -134,7 +134,7 @@ const Login = () => {
         <div className="relative z-10 flex items-center gap-3">
           <img
             src="/logo-bpg.png"
-            alt="Company Logo"
+            alt="Logo perusahaan"
             className="h-11 w-11 object-contain drop-shadow-sm"
           />
           <div className="leading-tight">
@@ -148,11 +148,11 @@ const Login = () => {
         <div className="relative z-10 space-y-10">
           <div className="space-y-3">
             <h1 className="text-3xl font-semibold tracking-tight text-balance">
-              Purchase orders, built for the fleet.
+              Purchase order, dirancang untuk armada.
             </h1>
             <p className="text-primary-foreground/80 max-w-sm text-sm leading-relaxed">
-              One place to issue, approve, and track bunkering purchase
-              orders across your vessels, partners, and regions.
+              Satu tempat untuk membuat dan memantau purchase order bunker
+              di seluruh kapal, mitra, dan wilayah Anda.
             </p>
           </div>
 
@@ -174,8 +174,8 @@ const Login = () => {
         </div>
 
         <p className="relative z-10 text-xs text-primary-foreground/60">
-          &copy; {new Date().getFullYear()} Barokah Perkasa Group. All
-          rights reserved.
+          &copy; {new Date().getFullYear()} Barokah Perkasa Group. Hak
+          cipta dilindungi.
         </p>
       </div>
 
@@ -185,7 +185,7 @@ const Login = () => {
           <div className="mb-8 flex flex-col items-center gap-3 lg:hidden">
             <img
               src="/logo-bpg.png"
-              alt="Company Logo"
+              alt="Logo perusahaan"
               className="h-14 w-14 object-contain"
             />
             <p className="text-sm font-medium text-muted-foreground">
@@ -195,17 +195,17 @@ const Login = () => {
 
           <div className="mb-8 space-y-1.5">
             <h2 className="text-2xl font-semibold tracking-tight">
-              Welcome back
+              Selamat datang kembali
             </h2>
             <p className="text-sm text-muted-foreground">
-              Sign in to your account to continue
+              Masuk ke akun Anda untuk melanjutkan
             </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Email Field */}
             <div className="space-y-2">
-              <Label htmlFor="email">Email address</Label>
+              <Label htmlFor="email">Alamat email</Label>
               <div className="relative">
                 <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
@@ -214,7 +214,7 @@ const Login = () => {
                   name="email"
                   value={formData.email}
                   onChange={handleInputChange}
-                  placeholder="you@company.com"
+                  placeholder="anda@perusahaan.com"
                   disabled={isLoading}
                   autoComplete="email"
                   className={`h-11 pl-10 ${errors.email ? "border-destructive focus-visible:ring-destructive" : ""}`}
@@ -231,14 +231,14 @@ const Login = () => {
             {/* Password Field */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password">Kata sandi</Label>
                 <Button
                   type="button"
                   variant="link"
                   className="h-auto p-0 text-xs text-muted-foreground hover:text-primary"
                   disabled={isLoading}
                 >
-                  Forgot password?
+                  Lupa kata sandi?
                 </Button>
               </div>
               <div className="relative">
@@ -249,7 +249,7 @@ const Login = () => {
                   name="password"
                   value={formData.password}
                   onChange={handleInputChange}
-                  placeholder="Enter your password"
+                  placeholder="Masukkan kata sandi"
                   disabled={isLoading}
                   autoComplete="current-password"
                   className={`h-11 pl-10 pr-10 ${errors.password ? "border-destructive focus-visible:ring-destructive" : ""}`}
@@ -260,6 +260,7 @@ const Login = () => {
                   size="icon"
                   className="absolute right-0 top-0 h-11 px-3 hover:bg-transparent"
                   onClick={() => setShowPassword(!showPassword)}
+                  aria-label={showPassword ? "Sembunyikan kata sandi" : "Tampilkan kata sandi"}
                   disabled={isLoading}
                 >
                   {showPassword ? (
@@ -285,7 +286,7 @@ const Login = () => {
                 disabled={isLoading}
               />
               <span className="text-sm text-muted-foreground">
-                Remember me
+                Ingat saya
               </span>
             </label>
 
@@ -299,18 +300,18 @@ const Login = () => {
               {isLoading ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Signing In...
+                  Sedang masuk...
                 </>
               ) : (
-                "Sign In"
+                "Masuk"
               )}
             </Button>
           </form>
 
           <p className="mt-8 text-center text-sm text-muted-foreground">
-            Don't have an account?{" "}
+            Belum punya akun?{" "}
             <Button variant="link" className="h-auto p-0 text-sm">
-              Contact administrator
+              Hubungi administrator
             </Button>
           </p>
         </div>

@@ -157,7 +157,7 @@ const CompanyForm = ({
     e.preventDefault();
 
     if (!formData.name.trim()) {
-      setError("Name is required.");
+      setError("Nama wajib diisi.");
       return;
     }
 
@@ -204,8 +204,8 @@ const CompanyForm = ({
         err instanceof Error
           ? err.message
           : isEditing
-            ? "Failed to update company"
-            : "Failed to create company",
+            ? "Gagal memperbarui perusahaan"
+            : "Gagal membuat perusahaan",
       );
       console.error(
         isEditing ? "Error updating company:" : "Error creating company:",
@@ -229,12 +229,12 @@ const CompanyForm = ({
         <DialogHeader className="px-6 pt-6">
           <DialogTitle className="flex items-center gap-2">
             <Building className="h-5 w-5" />
-            {isEditing ? "Edit Company" : "Create New Company"}
+            {isEditing ? "Ubah Perusahaan" : "Buat Perusahaan Baru"}
           </DialogTitle>
           <DialogDescription>
             {isEditing
-              ? "Update the details below to modify this company."
-              : "Fill in the details below to create a new company."}
+              ? "Perbarui detail di bawah untuk mengubah perusahaan ini."
+              : "Isi detail di bawah untuk membuat perusahaan baru."}
           </DialogDescription>
         </DialogHeader>
 
@@ -255,13 +255,13 @@ const CompanyForm = ({
               {/* Name */}
               <div className="space-y-2">
                 <Label htmlFor="company-name">
-                  Name <span className="text-destructive">*</span>
+                  Nama <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   id="company-name"
                   value={formData.name}
                   onChange={(e) => handleChange("name", e.target.value)}
-                  placeholder="e.g. PT Barokah Gemilang Perkasa"
+                  placeholder="mis. PT Barokah Gemilang Perkasa"
                   disabled={loading}
                 />
               </div>
@@ -269,22 +269,22 @@ const CompanyForm = ({
               {/* Code + General Code */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="company-code">Code</Label>
+                  <Label htmlFor="company-code">Kode</Label>
                   <Input
                     id="company-code"
                     value={formData.code_company}
                     onChange={(e) =>
                       handleChange("code_company", e.target.value)
                     }
-                    placeholder="e.g. BGP"
+                    placeholder="mis. BGP"
                     disabled={loading}
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="company-code-general">
-                    General Code{" "}
+                    Kode Umum{" "}
                     <span className="font-normal text-muted-foreground">
-                      (used in bunker PO numbers)
+                      (digunakan pada nomor PO bunker)
                     </span>
                   </Label>
                   <Input
@@ -293,7 +293,7 @@ const CompanyForm = ({
                     onChange={(e) =>
                       handleChange("code_company_general", e.target.value)
                     }
-                    placeholder="e.g. BGP"
+                    placeholder="mis. BGP"
                     disabled={loading}
                   />
                 </div>
@@ -327,7 +327,7 @@ const CompanyForm = ({
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="company-phone">Phone</Label>
+                  <Label htmlFor="company-phone">Telepon</Label>
                   <Input
                     id="company-phone"
                     type="tel"
@@ -338,12 +338,12 @@ const CompanyForm = ({
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="company-vat">VAT</Label>
+                  <Label htmlFor="company-vat">NPWP</Label>
                   <Input
                     id="company-vat"
                     value={formData.vat}
                     onChange={(e) => handleChange("vat", e.target.value)}
-                    placeholder="e.g. 01.123.456.7-890.000"
+                    placeholder="mis. 01.123.456.7-890.000"
                     disabled={loading}
                   />
                 </div>
@@ -351,7 +351,7 @@ const CompanyForm = ({
 
               {/* Address */}
               <div className="space-y-2">
-                <Label htmlFor="company-street">Street</Label>
+                <Label htmlFor="company-street">Jalan</Label>
                 <Input
                   id="company-street"
                   value={formData.street}
@@ -361,7 +361,7 @@ const CompanyForm = ({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="company-street2">Street 2</Label>
+                <Label htmlFor="company-street2">Jalan 2</Label>
                 <Input
                   id="company-street2"
                   value={formData.street2}
@@ -372,7 +372,7 @@ const CompanyForm = ({
 
               <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="company-city">City</Label>
+                  <Label htmlFor="company-city">Kota</Label>
                   <Input
                     id="company-city"
                     value={formData.city}
@@ -381,7 +381,7 @@ const CompanyForm = ({
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="company-zip">ZIP</Label>
+                  <Label htmlFor="company-zip">Kode Pos</Label>
                   <Input
                     id="company-zip"
                     value={formData.zip}
@@ -390,7 +390,7 @@ const CompanyForm = ({
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="company-region">Region</Label>
+                  <Label htmlFor="company-region">Wilayah</Label>
                   <Select
                     value={formData.region_id || NONE_VALUE}
                     onValueChange={(value) =>
@@ -401,10 +401,10 @@ const CompanyForm = ({
                     }
                   >
                     <SelectTrigger id="company-region" disabled={loading}>
-                      <SelectValue placeholder="None" />
+                      <SelectValue placeholder="Tidak ada" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value={NONE_VALUE}>None</SelectItem>
+                      <SelectItem value={NONE_VALUE}>Tidak ada</SelectItem>
                       {regions.map((r) => (
                         <SelectItem key={r.id} value={String(r.id)}>
                           {r.name}
@@ -418,17 +418,17 @@ const CompanyForm = ({
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="company-currency">Currency</Label>
+                  <Label htmlFor="company-currency">Mata Uang</Label>
                   <Input
                     id="company-currency"
                     value={formData.currency}
                     onChange={(e) => handleChange("currency", e.target.value)}
-                    placeholder="e.g. IDR"
+                    placeholder="mis. IDR"
                     disabled={loading}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="company-bu">Business Unit</Label>
+                  <Label htmlFor="company-bu">Unit Bisnis</Label>
                   <Select
                     value={formData.business_unit_id || NONE_VALUE}
                     onValueChange={(value) =>
@@ -439,10 +439,10 @@ const CompanyForm = ({
                     }
                   >
                     <SelectTrigger id="company-bu" disabled={loading}>
-                      <SelectValue placeholder="None" />
+                      <SelectValue placeholder="Tidak ada" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value={NONE_VALUE}>None</SelectItem>
+                      <SelectItem value={NONE_VALUE}>Tidak ada</SelectItem>
                       {businessUnits.map((bu) => (
                         <SelectItem key={bu.id} value={String(bu.id)}>
                           {bu.name}
@@ -458,13 +458,13 @@ const CompanyForm = ({
                 <Label htmlFor="company-logo">
                   Logo{" "}
                   <span className="font-normal text-muted-foreground">
-                    (printed on the PO, PNG or JPG under 1 MB)
+                    (dicetak pada PO, PNG atau JPG di bawah 1 MB)
                   </span>
                 </Label>
                 {currentLogoUrl && !logoFile && (
                   <img
                     src={currentLogoUrl}
-                    alt="Current logo"
+                    alt="Logo saat ini"
                     className="h-12 object-contain"
                   />
                 )}
@@ -488,7 +488,7 @@ const CompanyForm = ({
                     onChange={(e) => handleChange("active", e.target.checked)}
                     disabled={loading}
                   />
-                  <span className="text-sm">Active</span>
+                  <span className="text-sm">Aktif</span>
                 </label>
               </div>
             </div>
@@ -502,18 +502,18 @@ const CompanyForm = ({
             onClick={handleCancel}
             disabled={loading}
           >
-            Cancel
+            Batal
           </Button>
           <Button type="submit" form="company-form" disabled={loading}>
             {loading ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                {isEditing ? "Updating..." : "Creating..."}
+                {isEditing ? "Memperbarui..." : "Membuat..."}
               </>
             ) : isEditing ? (
-              "Update Company"
+              "Perbarui Perusahaan"
             ) : (
-              "Create Company"
+              "Buat Perusahaan"
             )}
           </Button>
         </DialogFooter>

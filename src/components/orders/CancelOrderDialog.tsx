@@ -48,7 +48,7 @@ const CancelOrderDialog = ({
       onCancelled();
       onOpenChange(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to cancel order");
+      setError(err instanceof Error ? err.message : "Gagal membatalkan PO");
     } finally {
       setSaving(false);
     }
@@ -60,12 +60,12 @@ const CancelOrderDialog = ({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <XCircle className="h-5 w-5" />
-            Cancel order {order?.name}
+            Batalkan PO {order?.name}
           </DialogTitle>
           <DialogDescription>
-            Use this when the order was made wrongly or is really cancelled. A
-            cancelled order cannot be reopened; create a new order (you can
-            copy this one afterwards).
+            Gunakan ini jika PO dibuat dengan keliru atau memang dibatalkan. PO
+            yang dibatalkan tidak dapat dibuka kembali; buat PO baru (Anda dapat
+            menyalin PO ini setelahnya).
           </DialogDescription>
         </DialogHeader>
 
@@ -78,14 +78,14 @@ const CancelOrderDialog = ({
 
         <div className="space-y-2">
           <Label htmlFor="cancel-reason">
-            Cancellation reason <span className="text-destructive">*</span>
+            Alasan pembatalan <span className="text-destructive">*</span>
           </Label>
           <Textarea
             id="cancel-reason"
             rows={3}
             value={reason}
             onChange={(e) => setReason(e.target.value)}
-            placeholder="e.g. Wrong vessel selected / PO cancelled by the vendor"
+            placeholder="mis. Kapal yang dipilih salah / PO dibatalkan oleh vendor"
             disabled={saving}
           />
         </div>
@@ -96,7 +96,7 @@ const CancelOrderDialog = ({
             onClick={() => onOpenChange(false)}
             disabled={saving}
           >
-            Keep order
+            Pertahankan PO
           </Button>
           <Button
             variant="destructive"
@@ -104,7 +104,7 @@ const CancelOrderDialog = ({
             disabled={saving || reason.trim().length < MIN_REASON}
           >
             {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-            Cancel order
+            Batalkan PO
           </Button>
         </DialogFooter>
       </DialogContent>

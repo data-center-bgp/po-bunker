@@ -13,7 +13,7 @@ export const companiesService = {
         .select(COMPANY_SELECT)
         .order("name")
         .overrideTypes<Company[], { merge: false }>(),
-      "Failed to fetch companies",
+      "Gagal memuat data perusahaan",
     ),
 
   createCompany: async (input: CompanyInput): Promise<number> => {
@@ -23,7 +23,7 @@ export const companiesService = {
         .insert(input)
         .select("id")
         .single<{ id: number }>(),
-      "Failed to create company",
+      "Gagal membuat perusahaan",
     );
     return row.id;
   },
@@ -36,7 +36,7 @@ export const companiesService = {
         .eq("id", id)
         .select("id")
         .single(),
-      "Failed to save the company logo",
+      "Gagal menyimpan logo perusahaan",
     );
   },
 
@@ -48,7 +48,7 @@ export const companiesService = {
         .eq("id", id)
         .select("id")
         .single(),
-      "Failed to update company",
+      "Gagal memperbarui perusahaan",
     );
   },
 
@@ -59,6 +59,6 @@ export const companiesService = {
         .select("id,name,code")
         .order("name")
         .overrideTypes<BusinessUnit[], { merge: false }>(),
-      "Failed to fetch business units",
+      "Gagal memuat unit bisnis",
     ),
 };

@@ -70,7 +70,7 @@ const STATE_VARIANT: Record<
 
 const formatDate = (iso: string | null) =>
   iso
-    ? new Date(iso).toLocaleDateString("en-US", {
+    ? new Date(iso).toLocaleDateString("id-ID", {
         year: "numeric",
         month: "short",
         day: "numeric",
@@ -108,7 +108,7 @@ const ViewOrderModal = ({
       setOrder(await ordersService.getOrderById(id));
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Failed to fetch order details",
+        err instanceof Error ? err.message : "Gagal memuat detail PO",
       );
     } finally {
       setLoading(false);
@@ -140,10 +140,10 @@ const ViewOrderModal = ({
         <DialogHeader className="px-6 pt-6">
           <DialogTitle className="flex items-center gap-2">
             <Eye className="h-5 w-5" />
-            Order Details
+            Detail Purchase Order (PO)
           </DialogTitle>
           <DialogDescription>
-            View the complete details of this purchase order.
+            Lihat detail lengkap PO ini.
           </DialogDescription>
         </DialogHeader>
 
@@ -153,7 +153,7 @@ const ViewOrderModal = ({
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
             <span className="ml-2 text-muted-foreground">
-              Loading order details...
+              Memuat detail PO...
             </span>
           </div>
         )}
@@ -172,7 +172,7 @@ const ViewOrderModal = ({
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
                     <Hash className="h-4 w-4 text-muted-foreground" />
-                    <Label className="text-muted-foreground">PO Number</Label>
+                    <Label className="text-muted-foreground">Nomor PO</Label>
                   </div>
                   <p className="text-lg font-semibold">{order.name}</p>
                 </div>
@@ -190,10 +190,10 @@ const ViewOrderModal = ({
               {isCancelled && (
                 <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-sm">
                   <p className="font-semibold text-destructive">
-                    Cancelled {formatDate(order.cancelled_at)}
-                    {order.canceller ? ` by ${order.canceller.name}` : ""}
+                    Dibatalkan {formatDate(order.cancelled_at)}
+                    {order.canceller ? ` oleh ${order.canceller.name}` : ""}
                   </p>
-                  <p className="mt-1">Reason: {order.cancel_reason}</p>
+                  <p className="mt-1">Alasan: {order.cancel_reason}</p>
                 </div>
               )}
 
@@ -202,7 +202,7 @@ const ViewOrderModal = ({
               <div>
                 <h4 className="mb-3 flex items-center gap-2 text-sm font-semibold">
                   <User className="h-4 w-4" />
-                  Customer & Company
+                  Customer & Perusahaan
                 </h4>
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div className="space-y-2">
@@ -214,7 +214,7 @@ const ViewOrderModal = ({
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-muted-foreground">Company</Label>
+                    <Label className="text-muted-foreground">Perusahaan</Label>
                     <Input
                       value={order.company?.name || "-"}
                       readOnly
@@ -222,7 +222,7 @@ const ViewOrderModal = ({
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-muted-foreground">Order Type</Label>
+                    <Label className="text-muted-foreground">Jenis PO</Label>
                     <Input
                       value={ORDER_TYPE_LABELS[order.order_type] || order.order_type}
                       readOnly
@@ -237,11 +237,11 @@ const ViewOrderModal = ({
               <div>
                 <h4 className="mb-3 flex items-center gap-2 text-sm font-semibold">
                   <Calendar className="h-4 w-4" />
-                  Dates
+                  Tanggal
                 </h4>
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div className="space-y-2">
-                    <Label className="text-muted-foreground">Order Date</Label>
+                    <Label className="text-muted-foreground">Tanggal PO</Label>
                     <Input
                       value={formatDate(order.date_order)}
                       readOnly
@@ -250,7 +250,7 @@ const ViewOrderModal = ({
                   </div>
                   <div className="space-y-2">
                     <Label className="text-muted-foreground">
-                      Submitted by
+                      Diajukan oleh
                     </Label>
                     <Input
                       value={order.creator?.name ?? "-"}
@@ -260,15 +260,16 @@ const ViewOrderModal = ({
                   </div>
                   <div className="space-y-2">
                     <Label className="text-muted-foreground">
-                      Vendor{" "}
-                      {order.option_order === "invoice" ? "Invoice" : "Quotation"}
+                      No.{" "}
+                      {order.option_order === "invoice" ? "invoice" : "penawaran"}{" "}
+                      vendor
                     </Label>
                     <Input
                       value={
                         [
                           order.partner_ref,
                           order.date_vendor
-                            ? `(${new Date(order.date_vendor).toLocaleDateString("en-GB")})`
+                            ? `(${new Date(order.date_vendor).toLocaleDateString("id-ID")})`
                             : "",
                         ]
                           .filter(Boolean)
@@ -279,7 +280,7 @@ const ViewOrderModal = ({
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-muted-foreground">Bunker Date</Label>
+                    <Label className="text-muted-foreground">Tanggal bunker</Label>
                     <Input
                       value={formatDate(order.date_bunker)}
                       readOnly
@@ -288,10 +289,10 @@ const ViewOrderModal = ({
                   </div>
                   {isCompleted && (
                     <div className="space-y-2 md:col-span-2">
-                      <Label className="text-muted-foreground">Completed</Label>
+                      <Label className="text-muted-foreground">Diselesaikan</Label>
                       <Input
                         value={`${formatDate(order.completed_at)}${
-                          order.completer ? ` by ${order.completer.name}` : ""
+                          order.completer ? ` oleh ${order.completer.name}` : ""
                         }`}
                         readOnly
                         className="bg-muted"
@@ -306,28 +307,30 @@ const ViewOrderModal = ({
               <div>
                 <h4 className="mb-3 flex items-center gap-2 text-sm font-semibold">
                   <Package className="h-4 w-4" />
-                  Order Items
+                  Item PO
                 </h4>
                 <div className="rounded-md border">
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-muted/50 hover:bg-muted/50">
-                        <TableHead>Product</TableHead>
-                        <TableHead>Vessel</TableHead>
-                        <TableHead className="text-right">Ordered</TableHead>
+                        <TableHead>Produk</TableHead>
+                        <TableHead>Kapal</TableHead>
+                        <TableHead className="text-right">Dipesan</TableHead>
                         {isCompleted && (
                           <>
-                            <TableHead className="text-right">Actual</TableHead>
                             <TableHead className="text-right">
-                              Difference
+                              Kuantitas aktual
+                            </TableHead>
+                            <TableHead className="text-right">
+                              Selisih
                             </TableHead>
                           </>
                         )}
-                        <TableHead className="text-right">Unit Price</TableHead>
+                        <TableHead className="text-right">Harga satuan</TableHead>
                         <TableHead className="text-right">Subtotal</TableHead>
                         {isCompleted && (
                           <TableHead className="text-right">
-                            Actual Amount
+                            Jumlah aktual
                           </TableHead>
                         )}
                       </TableRow>
@@ -391,7 +394,7 @@ const ViewOrderModal = ({
                 </div>
                 <div className="mt-3 flex flex-col items-end gap-1 text-sm text-muted-foreground">
                   <div>
-                    Lines total:{" "}
+                    Total baris:{" "}
                     <span className="text-foreground">
                       {formatCurrency(
                         (order.amount_untaxed || 0) + (order.amount_discount || 0),
@@ -399,26 +402,26 @@ const ViewOrderModal = ({
                     </span>
                   </div>
                   <div>
-                    Discount:{" "}
+                    Diskon:{" "}
                     <span className="text-foreground">
                       - {formatCurrency(order.amount_discount || 0)}
                     </span>
                   </div>
                   <div>
-                    VAT {order.tax_percent || 0}%:{" "}
+                    PPN {order.tax_percent || 0}%:{" "}
                     <span className="text-foreground">
                       {formatCurrency(order.amount_tax || 0)}
                     </span>
                   </div>
                   <div>
-                    Total (ordered):{" "}
+                    Total (dipesan):{" "}
                     <span className="ml-1 text-base font-semibold text-foreground">
                       {formatCurrency(order.amount_total || 0)}
                     </span>
                   </div>
                   {isCompleted && order.actual_amount !== null && (
                     <div>
-                      Actual amount (delivered x unit price):{" "}
+                      Jumlah aktual (diterima x harga satuan):{" "}
                       <span className="ml-1 text-base font-semibold text-foreground">
                         {formatCurrency(order.actual_amount)}
                       </span>
@@ -451,7 +454,7 @@ const ViewOrderModal = ({
                   <div>
                     <h4 className="mb-3 flex items-center gap-2 text-sm font-semibold">
                       <FileText className="h-4 w-4" />
-                      Notes
+                      Catatan
                     </h4>
                     <div
                       className="prose prose-sm max-w-none rounded-md border border-border bg-muted p-3 [&>p]:my-1"
@@ -477,7 +480,7 @@ const ViewOrderModal = ({
                   onClick={() => onComplete(order.id)}
                 >
                   <CheckCircle className="h-4 w-4" />
-                  Complete
+                  Selesaikan
                 </Button>
               )}
               {order && canWrite && isSubmitted && onCancel && (
@@ -487,18 +490,18 @@ const ViewOrderModal = ({
                   onClick={() => onCancel(order.id)}
                 >
                   <XCircle className="h-4 w-4" />
-                  Cancel PO
+                  Batalkan PO
                 </Button>
               )}
               {order && canWrite && isCancelled && onCopy && (
                 <Button variant="outline" onClick={() => onCopy(order)}>
                   <Copy className="h-4 w-4" />
-                  Copy as new PO
+                  Salin sebagai PO baru
                 </Button>
               )}
             </div>
             <Button variant="outline" onClick={() => onOpenChange(false)}>
-              Close
+              Tutup
             </Button>
           </div>
         </DialogFooter>

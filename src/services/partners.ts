@@ -13,13 +13,13 @@ export const partnersService = {
         .select(PARTNER_SELECT)
         .order("name")
         .overrideTypes<Partner[], { merge: false }>(),
-      "Failed to fetch partners",
+      "Gagal memuat data mitra",
     ),
 
   createPartner: async (input: PartnerInput): Promise<void> => {
     unwrap(
       await supabase.from("partners").insert(input).select("id").single(),
-      "Failed to create partner",
+      "Gagal membuat mitra",
     );
   },
 
@@ -31,7 +31,7 @@ export const partnersService = {
         .eq("id", id)
         .select("id")
         .single(),
-      "Failed to update partner",
+      "Gagal memperbarui mitra",
     );
   },
 };

@@ -57,10 +57,10 @@ const STATE_VARIANT: Record<OrderState, "info" | "success" | "destructive"> = {
 
 type Filter = "all" | OrderState;
 const FILTERS: { key: Filter; label: string }[] = [
-  { key: "all", label: "All" },
-  { key: "submitted", label: "Submitted" },
-  { key: "completed", label: "Completed" },
-  { key: "cancelled", label: "Cancelled" },
+  { key: "all", label: "Semua" },
+  { key: "submitted", label: "Diajukan" },
+  { key: "completed", label: "Selesai" },
+  { key: "cancelled", label: "Dibatalkan" },
 ];
 
 const stripHtml = (html: string) =>
@@ -201,7 +201,7 @@ const OrdersTable = ({
                 size="icon"
                 className="h-7 w-7"
                 onClick={() => toggleExpanded(order.id)}
-                title={isExpanded ? "Hide lines" : "Show all lines"}
+                title={isExpanded ? "Sembunyikan baris" : "Tampilkan semua baris"}
               >
                 {isExpanded ? (
                   <ChevronUp className="h-4 w-4" />
@@ -212,7 +212,7 @@ const OrdersTable = ({
             ) : null}
           </TableCell>
           <TableCell>
-            {new Date(order.date_order).toLocaleDateString("en-US", {
+            {new Date(order.date_order).toLocaleDateString("id-ID", {
               year: "numeric",
               month: "short",
               day: "numeric",
@@ -230,7 +230,7 @@ const OrdersTable = ({
             {line?.product?.name || "-"}
             {extraCount > 0 && (
               <Badge variant="secondary" className="ml-2 text-xs">
-                +{extraCount} more
+                +{extraCount} lainnya
               </Badge>
             )}
           </TableCell>
@@ -238,25 +238,25 @@ const OrdersTable = ({
             {line ? `${line.product_qty} ${line.uom?.name ?? ""}` : "-"}
             {order.state === "completed" && line?.actual_qty != null && (
               <span className="block text-xs text-muted-foreground">
-                actual {line.actual_qty}
+                aktual {line.actual_qty}
               </span>
             )}
           </TableCell>
           <TableCell className="max-w-[200px] truncate">
             {order.state === "cancelled" && order.cancel_reason
-              ? `Cancelled: ${order.cancel_reason}`
+              ? `Dibatalkan: ${order.cancel_reason}`
               : order.notes
                 ? stripHtml(order.notes)
                 : "-"}
           </TableCell>
           <TableCell>
             <div className="flex items-center justify-center gap-1">
-              <IconAction tip="View" onClick={() => onView?.(order.id)}>
+              <IconAction tip="Lihat"onClick={() => onView?.(order.id)}>
                 <Eye className="h-4 w-4 text-muted-foreground" />
               </IconAction>
               {onComplete && submitted && (
                 <IconAction
-                  tip="Complete (upload DO, actual quantity)"
+                  tip="Selesaikan (unggah DO, kuantitas aktual)"
                   className="text-green-600 hover:text-green-700"
                   onClick={() => onComplete(order.id)}
                 >
@@ -265,7 +265,7 @@ const OrdersTable = ({
               )}
               {onCancel && submitted && (
                 <IconAction
-                  tip="Cancel PO"
+                  tip="Batalkan PO"
                   className="text-orange-600 hover:text-orange-700"
                   onClick={() => onCancel(order.id)}
                 >
@@ -273,12 +273,12 @@ const OrdersTable = ({
                 </IconAction>
               )}
               {onCopy && order.state === "cancelled" && (
-                <IconAction tip="Copy as new PO" onClick={() => onCopy(order)}>
+                <IconAction tip="Salin sebagai PO baru" onClick={() => onCopy(order)}>
                   <Copy className="h-4 w-4 text-muted-foreground" />
                 </IconAction>
               )}
               <IconAction
-                tip="Preview PDF"
+                tip="Pratinjau PDF"
                 onClick={() => handleOpenPdf(order)}
                 disabled={pdfLoadingId === order.id}
               >
@@ -289,7 +289,7 @@ const OrdersTable = ({
                 )}
               </IconAction>
               <IconAction
-                tip="Download Excel"
+                tip="Unduh Excel"
                 onClick={() => handleDownloadExcel(order)}
                 disabled={excelLoadingId === order.id}
               >
@@ -307,7 +307,7 @@ const OrdersTable = ({
             <TableRow key={`${order.id}-line-${extra.id}`} className="bg-muted/30">
               <TableCell />
               <TableCell colSpan={4} className="text-xs text-muted-foreground">
-                Line {i + 2}
+                Baris {i + 2}
               </TableCell>
               <TableCell>{extra.vessel?.name || "-"}</TableCell>
               <TableCell>{extra.product?.name || "-"}</TableCell>
@@ -315,7 +315,7 @@ const OrdersTable = ({
                 {`${extra.product_qty} ${extra.uom?.name ?? ""}`}
                 {order.state === "completed" && extra.actual_qty != null && (
                   <span className="block text-xs text-muted-foreground">
-                    actual {extra.actual_qty}
+                    aktual {extra.actual_qty}
                   </span>
                 )}
               </TableCell>
@@ -351,15 +351,15 @@ const OrdersTable = ({
             <TableHeader>
               <TableRow className="bg-muted/50 hover:bg-muted/50">
                 <TableHead className="w-8" />
-                <TableHead>Order Date</TableHead>
-                <TableHead>Company</TableHead>
-                <TableHead>PO Number</TableHead>
+                <TableHead>Tanggal PO</TableHead>
+                <TableHead>Perusahaan</TableHead>
+                <TableHead>Nomor PO</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Vessel</TableHead>
-                <TableHead>Product</TableHead>
+                <TableHead>Kapal</TableHead>
+                <TableHead>Produk</TableHead>
                 <TableHead>Qty</TableHead>
-                <TableHead>Notes</TableHead>
-                <TableHead className="text-center">Actions</TableHead>
+                <TableHead>Catatan</TableHead>
+                <TableHead className="text-center">Aksi</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -370,8 +370,8 @@ const OrdersTable = ({
                     className="h-24 text-center text-muted-foreground"
                   >
                     {orders.length === 0
-                      ? "No orders found. Create your first order to get started."
-                      : "No orders match the selected filter."}
+                      ? "Tidak ada PO. Buat PO pertama Anda untuk memulai."
+                      : "Tidak ada PO yang sesuai dengan filter."}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -383,7 +383,7 @@ const OrdersTable = ({
 
         <Card className="flex items-center justify-between p-4">
           <p className="text-sm text-muted-foreground">
-            Showing {startItem} to {endItem} of {totalCount} orders
+            Menampilkan {startItem} sampai {endItem} dari {totalCount} PO
           </p>
           <div className="flex items-center gap-1">
             <Button
@@ -393,7 +393,7 @@ const OrdersTable = ({
               disabled={currentPage === 1}
             >
               <ChevronLeft className="h-4 w-4" />
-              Previous
+              Sebelumnya
             </Button>
             {(() => {
               const pages: (number | string)[] = [];
@@ -437,7 +437,7 @@ const OrdersTable = ({
               }
               disabled={currentPage === totalPages}
             >
-              Next
+              Berikutnya
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>

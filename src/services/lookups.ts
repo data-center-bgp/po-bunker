@@ -1,5 +1,5 @@
 import { supabase } from "@/lib/supabase";
-import { unwrap } from "./helpers";
+import { translateMessage, unwrap } from "./helpers";
 import type { CodeBudget, Product, Vessel, VesselSyncResult } from "./types";
 
 const VESSEL_SELECT =
@@ -16,7 +16,7 @@ export const lookupsService = {
         .select(VESSEL_SELECT)
         .order("name")
         .overrideTypes<Vessel[], { merge: false }>(),
-      "Failed to fetch vessels",
+      "Gagal memuat data kapal",
     ),
 
   // Runs the po-bunker-sync-vessels Edge Function (admins only). The SMS API
@@ -27,10 +27,10 @@ export const lookupsService = {
       { method: "POST" },
     );
     if (error) {
-      let message = "Failed to sync vessels";
+      let message = "Gagal menyinkronkan kapal";
       try {
         const body = await (error as { context?: Response }).context?.json();
-        if (body?.error) message = String(body.error);
+        if (body?.error) message = translateMessage(String(body.error));
       } catch {
         // keep the generic message
       }
@@ -47,7 +47,7 @@ export const lookupsService = {
         .eq("active", true)
         .order("name")
         .overrideTypes<Product[], { merge: false }>(),
-      "Failed to fetch products",
+      "Gagal memuat data produk",
     ),
 
   getCodeBudgets: async (): Promise<CodeBudget[]> =>
@@ -58,7 +58,7 @@ export const lookupsService = {
         .eq("active", true)
         .order("name")
         .overrideTypes<CodeBudget[], { merge: false }>(),
-      "Failed to fetch code budgets",
+      "Gagal memuat kode budget",
     ),
 
   // People who can be picked as "Requested By" (active app users).
@@ -70,6 +70,6 @@ export const lookupsService = {
         .eq("active", true)
         .order("name")
         .overrideTypes<{ id: string; name: string }[], { merge: false }>(),
-      "Failed to fetch users",
+      "Gagal memuat data pengguna",
     ),
 };

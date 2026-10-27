@@ -43,7 +43,7 @@ const PartnerPage = () => {
       setPartners(await partnersService.getPartners());
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Failed to fetch partners",
+        err instanceof Error ? err.message : "Gagal memuat data mitra",
       );
       setPartners([]);
     } finally {
@@ -114,13 +114,13 @@ const PartnerPage = () => {
             Vendor/Customer
           </h2>
           <p className="text-muted-foreground">
-            Browse, search, and manage business partners.
+            Telusuri, cari, dan kelola mitra bisnis.
           </p>
         </div>
         {canWrite && (
           <Button onClick={handleAddNew}>
             <Plus className="h-4 w-4" />
-            Add New Partner
+            Tambah Mitra
           </Button>
         )}
       </div>
@@ -131,7 +131,7 @@ const PartnerPage = () => {
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             type="text"
-            placeholder="Search by partner name..."
+            placeholder="Cari berdasarkan nama mitra..."
             value={query}
             onChange={(e) => handleQueryChange(e.target.value)}
             className="pl-9"
@@ -144,7 +144,7 @@ const PartnerPage = () => {
             checked={vendorOnly}
             onChange={(e) => handleVendorOnlyChange(e.target.checked)}
           />
-          Vendor companies only
+          Hanya perusahaan vendor
         </label>
       </div>
 
@@ -159,21 +159,21 @@ const PartnerPage = () => {
       {/* Results */}
       <div className="rounded-lg border bg-card">
         <div className="flex items-center justify-between border-b px-4 py-3">
-          <h3 className="text-sm font-semibold">Results</h3>
+          <h3 className="text-sm font-semibold">Hasil</h3>
           {!loading && (
-            <Badge variant="secondary">{filtered.length} partner(s)</Badge>
+            <Badge variant="secondary">{filtered.length} mitra</Badge>
           )}
         </div>
 
         {loading ? (
           <div className="p-8 text-center text-sm text-muted-foreground">
-            Loading partners...
+            Memuat data mitra...
           </div>
         ) : filtered.length === 0 ? (
           <div className="p-8 text-center text-sm text-muted-foreground">
             {partners.length === 0
-              ? "No partners found."
-              : "No partners match your search."}
+              ? "Mitra tidak ditemukan."
+              : "Tidak ada mitra yang sesuai dengan pencarian."}
           </div>
         ) : (
           <>
@@ -181,14 +181,14 @@ const PartnerPage = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Company</TableHead>
+                    <TableHead>Nama</TableHead>
+                    <TableHead>Tipe</TableHead>
+                    <TableHead>Perusahaan</TableHead>
                     <TableHead>Email</TableHead>
-                    <TableHead>Phone</TableHead>
-                    <TableHead>Parent</TableHead>
-                    <TableHead>Active</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead>Telepon</TableHead>
+                    <TableHead>Induk</TableHead>
+                    <TableHead>Aktif</TableHead>
+                    <TableHead className="text-right">Aksi</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -199,7 +199,7 @@ const PartnerPage = () => {
                       </TableCell>
                       <TableCell>{p.type || "-"}</TableCell>
                       <TableCell>
-                        {p.is_company ? "Yes" : "No"}
+                        {p.is_company ? "Ya" : "Tidak"}
                       </TableCell>
                       <TableCell>{p.email || "-"}</TableCell>
                       <TableCell>{p.phone || p.mobile || "-"}</TableCell>
@@ -208,7 +208,7 @@ const PartnerPage = () => {
                         <Badge
                           variant={p.active ? "success" : "secondary"}
                         >
-                          {p.active ? "Active" : "Inactive"}
+                          {p.active ? "Aktif" : "Nonaktif"}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
@@ -217,7 +217,7 @@ const PartnerPage = () => {
                             variant="ghost"
                             size="icon"
                             onClick={() => handleEdit(p)}
-                            title="Edit"
+                            title="Ubah"
                           >
                             <Pencil className="h-4 w-4" />
                           </Button>
@@ -232,7 +232,7 @@ const PartnerPage = () => {
             {/* Pagination */}
             <div className="flex items-center justify-between border-t px-4 py-3 text-sm">
               <span className="text-muted-foreground">
-                Showing {start}–{end} of {filtered.length}
+                Menampilkan {start}–{end} dari {filtered.length}
               </span>
               <div className="flex items-center gap-2">
                 <Button
@@ -242,10 +242,10 @@ const PartnerPage = () => {
                   disabled={safePage <= 1}
                 >
                   <ChevronLeft className="h-4 w-4" />
-                  Prev
+                  Sebelumnya
                 </Button>
                 <span className="text-muted-foreground">
-                  Page {safePage} of {totalPages}
+                  Halaman {safePage} dari {totalPages}
                 </span>
                 <Button
                   variant="outline"
@@ -255,7 +255,7 @@ const PartnerPage = () => {
                   }
                   disabled={safePage >= totalPages}
                 >
-                  Next
+                  Berikutnya
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>

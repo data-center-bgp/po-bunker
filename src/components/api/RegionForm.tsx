@@ -94,7 +94,7 @@ const RegionForm = ({
     e.preventDefault();
 
     if (!formData.name.trim()) {
-      setError("Name is required.");
+      setError("Nama wajib diisi.");
       return;
     }
 
@@ -129,8 +129,8 @@ const RegionForm = ({
         err instanceof Error
           ? err.message
           : isEditing
-            ? "Failed to update region"
-            : "Failed to create region",
+            ? "Gagal memperbarui wilayah"
+            : "Gagal membuat wilayah",
       );
       console.error(
         isEditing ? "Error updating region:" : "Error creating region:",
@@ -158,12 +158,12 @@ const RegionForm = ({
         <DialogHeader className="px-6 pt-6">
           <DialogTitle className="flex items-center gap-2">
             <MapPin className="h-5 w-5" />
-            {isEditing ? "Edit Region" : "Create New Region"}
+            {isEditing ? "Ubah Wilayah" : "Buat Wilayah Baru"}
           </DialogTitle>
           <DialogDescription>
             {isEditing
-              ? "Update the details below to modify this region."
-              : "Fill in the details below to create a new region."}
+              ? "Perbarui detail di bawah untuk mengubah wilayah ini."
+              : "Isi detail di bawah untuk membuat wilayah baru."}
           </DialogDescription>
         </DialogHeader>
 
@@ -184,59 +184,59 @@ const RegionForm = ({
               {/* Name */}
               <div className="space-y-2">
                 <Label htmlFor="region-name">
-                  Name <span className="text-destructive">*</span>
+                  Nama <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   id="region-name"
                   value={formData.name}
                   onChange={(e) => handleChange("name", e.target.value)}
-                  placeholder="e.g. Jakarta"
+                  placeholder="mis. Jakarta"
                   disabled={loading}
                 />
               </div>
 
               {/* Code */}
               <div className="space-y-2">
-                <Label htmlFor="region-code">Code</Label>
+                <Label htmlFor="region-code">Kode</Label>
                 <Input
                   id="region-code"
                   value={formData.code}
                   onChange={(e) => handleChange("code", e.target.value)}
-                  placeholder="e.g. JKT"
+                  placeholder="mis. JKT"
                   disabled={loading}
                 />
               </div>
 
               {/* Level Region */}
               <div className="space-y-2">
-                <Label htmlFor="region-level">Level Region</Label>
+                <Label htmlFor="region-level">Level Wilayah</Label>
                 <Input
                   id="region-level"
                   value={formData.level_region}
                   onChange={(e) =>
                     handleChange("level_region", e.target.value)
                   }
-                  placeholder="e.g. province"
+                  placeholder="mis. province"
                   disabled={loading}
                 />
               </div>
 
               {/* BPS Code */}
               <div className="space-y-2">
-                <Label htmlFor="region-bps">BPS Code</Label>
+                <Label htmlFor="region-bps">Kode BPS</Label>
                 <Input
                   id="region-bps"
                   type="number"
                   value={formData.bps_code}
                   onChange={(e) => handleChange("bps_code", e.target.value)}
-                  placeholder="e.g. 31"
+                  placeholder="mis. 31"
                   disabled={loading}
                 />
               </div>
 
               {/* Parent Region */}
               <div className="space-y-2">
-                <Label htmlFor="region-parent">Parent Region</Label>
+                <Label htmlFor="region-parent">Wilayah Induk</Label>
                 <Select
                   value={formData.parent_id || NONE_VALUE}
                   onValueChange={(value) =>
@@ -244,10 +244,10 @@ const RegionForm = ({
                   }
                 >
                   <SelectTrigger id="region-parent" disabled={loading}>
-                    <SelectValue placeholder="None" />
+                    <SelectValue placeholder="Tidak ada" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={NONE_VALUE}>None</SelectItem>
+                    <SelectItem value={NONE_VALUE}>Tidak ada</SelectItem>
                     {parentOptions.map((r) => (
                       <SelectItem key={r.id} value={String(r.id)}>
                         {r.name}
@@ -260,14 +260,14 @@ const RegionForm = ({
 
               {/* Description */}
               <div className="space-y-2">
-                <Label htmlFor="region-description">Description</Label>
+                <Label htmlFor="region-description">Deskripsi</Label>
                 <Textarea
                   id="region-description"
                   value={formData.description}
                   onChange={(e) =>
                     handleChange("description", e.target.value)
                   }
-                  placeholder="Optional notes about this region"
+                  placeholder="Catatan opsional tentang wilayah ini"
                   disabled={loading}
                   rows={3}
                 />
@@ -284,7 +284,7 @@ const RegionForm = ({
                   disabled={loading}
                 />
                 <Label htmlFor="region-active" className="cursor-pointer">
-                  Active
+                  Aktif
                 </Label>
               </div>
             </div>
@@ -298,18 +298,18 @@ const RegionForm = ({
             onClick={handleCancel}
             disabled={loading}
           >
-            Cancel
+            Batal
           </Button>
           <Button type="submit" form="region-form" disabled={loading}>
             {loading ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                {isEditing ? "Updating..." : "Creating..."}
+                {isEditing ? "Memperbarui..." : "Membuat..."}
               </>
             ) : isEditing ? (
-              "Update Region"
+              "Perbarui Wilayah"
             ) : (
-              "Create Region"
+              "Buat Wilayah"
             )}
           </Button>
         </DialogFooter>

@@ -27,32 +27,32 @@ const PAGE_META: Record<
 > = {
   overview: {
     title: "Dashboard",
-    description: "A snapshot of purchase order activity across the fleet.",
+    description: "Gambaran aktivitas purchase order di seluruh armada.",
     icon: LayoutDashboard,
   },
   orders: {
-    title: "Orders",
-    description: "Create, track, and approve purchase orders.",
+    title: "Daftar PO",
+    description: "Buat, pantau, selesaikan, dan batalkan purchase order.",
     icon: ClipboardList,
   },
   vessels: {
-    title: "Shipping Vessels",
-    description: "Browse the fleet registered for bunkering.",
+    title: "Kapal",
+    description: "Daftar kapal yang terdaftar untuk bunker.",
     icon: Ship,
   },
   regions: {
-    title: "Regions",
-    description: "Manage the operational regions used across orders.",
+    title: "Wilayah",
+    description: "Kelola wilayah operasional yang digunakan pada PO.",
     icon: MapPin,
   },
   partners: {
     title: "Vendor/Customer",
-    description: "Manage vendor and customer partners.",
+    description: "Kelola mitra vendor dan customer.",
     icon: Building2,
   },
   companies: {
-    title: "Companies",
-    description: "Manage the internal companies issuing orders.",
+    title: "Perusahaan",
+    description: "Kelola perusahaan internal yang menerbitkan PO.",
     icon: Building,
   },
 };

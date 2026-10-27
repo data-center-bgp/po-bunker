@@ -52,15 +52,15 @@ interface StateMeta {
 }
 
 const STATE_META: Record<StateKey, StateMeta> = {
-  draft: { label: "Draft", variant: "info", color: "#3b82f6" },
+  draft: { label: "Draf", variant: "info", color: "#3b82f6" },
   "to approve": {
-    label: "Pending Approval",
+    label: "Menunggu Persetujuan",
     variant: "warning",
     color: "#f59e0b",
   },
-  purchase: { label: "Approved", variant: "success", color: "#10b981" },
-  done: { label: "Completed", variant: "success", color: "#16a34a" },
-  cancel: { label: "Cancelled", variant: "destructive", color: "#ef4444" },
+  purchase: { label: "Disetujui", variant: "success", color: "#10b981" },
+  done: { label: "Selesai", variant: "success", color: "#16a34a" },
+  cancel: { label: "Dibatalkan", variant: "destructive", color: "#ef4444" },
 };
 
 const getStateMeta = (state: string): StateMeta =>
@@ -72,7 +72,7 @@ const getStateMeta = (state: string): StateMeta =>
 
 const formatDate = (iso: string): string => {
   const d = new Date(iso);
-  return d.toLocaleDateString("en-GB", {
+  return d.toLocaleDateString("id-ID", {
     day: "2-digit",
     month: "short",
     year: "numeric",
@@ -158,7 +158,7 @@ const OverviewPage = () => {
       const d = new Date(ref.getFullYear(), ref.getMonth() - i, 1);
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
       buckets[key] = {
-        month: d.toLocaleDateString("en-GB", {
+        month: d.toLocaleDateString("id-ID", {
           month: "short",
           year: "2-digit",
         }),
@@ -250,39 +250,39 @@ const OverviewPage = () => {
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
         <p className="text-sm text-muted-foreground">
-          Aggregated view of purchase orders. Data shown is illustrative
-          dummy data following the real PO structure — replace{" "}
+          Ringkasan purchase order. Data yang ditampilkan hanyalah contoh
+          (dummy) mengikuti struktur PO sebenarnya — ganti{" "}
           <code className="rounded bg-muted px-1 py-0.5 text-xs">
             dummyOrders
           </code>{" "}
-          with live API output when available.
+          dengan data langsung saat tersedia.
         </p>
       </div>
 
       {/* KPI row */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard
-          title="Total POs"
+          title="Total PO"
           value={String(kpis.total)}
-          sub="All states included"
+          sub="Semua status"
           icon={ClipboardList}
         />
         <KpiCard
-          title="Total Amount"
+          title="Total Nilai"
           value={formatCompactIDR(kpis.totalAmount)}
-          sub="Excludes cancelled POs"
+          sub="Tidak termasuk PO dibatalkan"
           icon={CircleDollarSign}
         />
         <KpiCard
-          title="Pending Approval"
+          title="Menunggu Persetujuan"
           value={String(kpis.pending)}
-          sub="purchase + to approve"
+          sub="disetujui + menunggu persetujuan"
           icon={Clock}
         />
         <KpiCard
-          title="Cancelled"
+          title="Dibatalkan"
           value={String(kpis.cancelled)}
-          sub={`${Math.round((kpis.cancelled / kpis.total) * 100)}% of total`}
+          sub={`${Math.round((kpis.cancelled / kpis.total) * 100)}% dari total`}
           icon={XCircle}
         />
       </div>
@@ -290,8 +290,8 @@ const OverviewPage = () => {
       {/* Status distribution + Monthly trend */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <ChartCard
-          title="Status Distribution"
-          description="PO count broken down by workflow state"
+          title="Sebaran Status"
+          description="Jumlah PO berdasarkan status alur kerja"
         >
           <ResponsiveContainer width="100%" height={260}>
             <BarChart
@@ -314,7 +314,7 @@ const OverviewPage = () => {
               />
               <Tooltip
                 cursor={{ fill: "var(--muted)" }}
-                formatter={(v) => [`${v} POs`, "Count"]}
+                formatter={(v) => [`${v} PO`, "Jumlah"]}
               />
               <Bar dataKey="count" radius={[0, 4, 4, 0]}>
                 {statusData.map((entry) => (
@@ -326,8 +326,8 @@ const OverviewPage = () => {
         </ChartCard>
 
         <ChartCard
-          title="Monthly Trend"
-          description="PO count (bars) and total amount (line) over the last 6 months"
+          title="Tren Bulanan"
+          description="Jumlah PO (batang) dan total nilai (garis) selama 6 bulan terakhir"
         >
           <ResponsiveContainer width="100%" height={260}>
             <ComposedChart
@@ -356,15 +356,15 @@ const OverviewPage = () => {
               <Tooltip
                 formatter={(v, name) =>
                   name === "amount"
-                    ? [formatIDR(Number(v)), "Amount"]
-                    : [`${v} POs`, "Count"]
+                    ? [formatIDR(Number(v)), "Nilai"]
+                    : [`${v} PO`, "Jumlah"]
                 }
               />
               <Legend />
               <Bar
                 yAxisId="count"
                 dataKey="count"
-                name="PO Count"
+                name="Jumlah PO"
                 fill="var(--chart-1)"
                 radius={[4, 4, 0, 0]}
               />
@@ -372,7 +372,7 @@ const OverviewPage = () => {
                 yAxisId="amount"
                 type="monotone"
                 dataKey="amount"
-                name="Amount"
+                name="Nilai"
                 stroke="var(--chart-3)"
                 strokeWidth={2}
                 dot={{ r: 3 }}
@@ -385,8 +385,8 @@ const OverviewPage = () => {
       {/* Top vendors + Top vessels */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <ChartCard
-          title="Top 5 Vendors"
-          description="By total PO amount (excluding cancelled)"
+          title="5 Vendor Teratas"
+          description="Berdasarkan total nilai PO (tidak termasuk yang dibatalkan)"
         >
           <ResponsiveContainer width="100%" height={260}>
             <BarChart
@@ -415,7 +415,7 @@ const OverviewPage = () => {
               />
               <Tooltip
                 cursor={{ fill: "var(--muted)" }}
-                formatter={(v) => [formatIDR(Number(v)), "Amount"]}
+                formatter={(v) => [formatIDR(Number(v)), "Nilai"]}
               />
               <Bar
                 dataKey="amount"
@@ -427,8 +427,8 @@ const OverviewPage = () => {
         </ChartCard>
 
         <ChartCard
-          title="Top 5 Vessels"
-          description="By number of POs referencing them (excluding cancelled)"
+          title="5 Kapal Teratas"
+          description="Berdasarkan jumlah PO yang merujuk kapal tersebut (tidak termasuk yang dibatalkan)"
         >
           <ResponsiveContainer width="100%" height={260}>
             <BarChart
@@ -457,7 +457,7 @@ const OverviewPage = () => {
               />
               <Tooltip
                 cursor={{ fill: "var(--muted)" }}
-                formatter={(v) => [`${v} POs`, "Count"]}
+                formatter={(v) => [`${v} PO`, "Jumlah"]}
               />
               <Bar
                 dataKey="count"
@@ -472,15 +472,15 @@ const OverviewPage = () => {
       {/* POs by buyer + Recent POs */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <ChartCard
-          title="POs by Buyer"
-          description="Count and total amount grouped by requestor"
+          title="PO per Pembeli"
+          description="Jumlah dan total nilai berdasarkan peminta"
         >
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Buyer</TableHead>
-                <TableHead className="text-right">POs</TableHead>
-                <TableHead className="text-right">Amount</TableHead>
+                <TableHead>Pembeli</TableHead>
+                <TableHead className="text-right">PO</TableHead>
+                <TableHead className="text-right">Nilai</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -498,16 +498,16 @@ const OverviewPage = () => {
         </ChartCard>
 
         <ChartCard
-          title="Recent POs"
-          description="Five most recently created purchase orders"
+          title="PO Terbaru"
+          description="Lima purchase order yang terakhir dibuat"
         >
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>PO Ref</TableHead>
+                <TableHead>No. PO</TableHead>
                 <TableHead>Vendor</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead className="text-right">Amount</TableHead>
+                <TableHead>Tanggal</TableHead>
+                <TableHead className="text-right">Nilai</TableHead>
                 <TableHead>Status</TableHead>
               </TableRow>
             </TableHeader>

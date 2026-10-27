@@ -37,7 +37,7 @@ const OrderDocuments = ({
       await action();
       onChanged();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
+      setError(err instanceof Error ? err.message : "Terjadi kesalahan");
     } finally {
       setBusy(null);
     }
@@ -46,7 +46,7 @@ const OrderDocuments = ({
   const open = async (doc: OrderDocument) => {
     const url = await storageService.getSignedUrl(doc.file_path, 600);
     if (url) window.open(url, "_blank", "noopener");
-    else setError("Could not open the document.");
+    else setError("Dokumen tidak dapat dibuka.");
   };
 
   return (
@@ -55,7 +55,7 @@ const OrderDocuments = ({
 
       {documents.length === 0 ? (
         <p className="text-sm text-muted-foreground">
-          No Delivery Order uploaded yet.
+          Belum ada Delivery Order (DO) yang diunggah.
         </p>
       ) : (
         <ul className="space-y-1.5">
@@ -83,7 +83,7 @@ const OrderDocuments = ({
                   size="icon"
                   className="h-7 w-7 shrink-0 text-destructive"
                   disabled={busy !== null}
-                  title="Delete document"
+                  title="Hapus dokumen"
                   onClick={() =>
                     run(doc.id, () => ordersService.deleteDocument(doc))
                   }
@@ -127,7 +127,7 @@ const OrderDocuments = ({
             ) : (
               <Paperclip className="h-4 w-4" />
             )}
-            Upload Delivery Order (PDF, JPG or PNG, max 5 MB)
+            Unggah Delivery Order (DO) (PDF, JPG atau PNG, maks. 5 MB)
           </Button>
         </div>
       )}

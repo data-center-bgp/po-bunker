@@ -10,13 +10,13 @@ export const regionsService = {
         .select("*")
         .order("name")
         .overrideTypes<Region[], { merge: false }>(),
-      "Failed to fetch regions",
+      "Gagal memuat data wilayah",
     ),
 
   createRegion: async (input: RegionInput): Promise<void> => {
     unwrap(
       await supabase.from("regions").insert(input).select("id").single(),
-      "Failed to create region",
+      "Gagal membuat wilayah",
     );
   },
 
@@ -28,7 +28,7 @@ export const regionsService = {
         .eq("id", id)
         .select("id")
         .single(),
-      "Failed to update region",
+      "Gagal memperbarui wilayah",
     );
   },
 };

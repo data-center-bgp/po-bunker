@@ -148,7 +148,7 @@ const PartnerForm = ({
     e.preventDefault();
 
     if (!formData.name.trim()) {
-      setError("Name is required.");
+      setError("Nama wajib diisi.");
       return;
     }
 
@@ -188,8 +188,8 @@ const PartnerForm = ({
         err instanceof Error
           ? err.message
           : isEditing
-            ? "Failed to update partner"
-            : "Failed to create partner",
+            ? "Gagal memperbarui mitra"
+            : "Gagal membuat mitra",
       );
       console.error(
         isEditing ? "Error updating partner:" : "Error creating partner:",
@@ -217,12 +217,12 @@ const PartnerForm = ({
         <DialogHeader className="px-6 pt-6">
           <DialogTitle className="flex items-center gap-2">
             <Building2 className="h-5 w-5" />
-            {isEditing ? "Edit Partner" : "Create New Partner"}
+            {isEditing ? "Ubah Mitra" : "Buat Mitra Baru"}
           </DialogTitle>
           <DialogDescription>
             {isEditing
-              ? "Update the details below to modify this vendor/customer."
-              : "Fill in the details below to create a new vendor/customer."}
+              ? "Perbarui detail di bawah untuk mengubah vendor/customer ini."
+              : "Isi detail di bawah untuk membuat vendor/customer baru."}
           </DialogDescription>
         </DialogHeader>
 
@@ -243,13 +243,13 @@ const PartnerForm = ({
               {/* Name */}
               <div className="space-y-2">
                 <Label htmlFor="partner-name">
-                  Name <span className="text-destructive">*</span>
+                  Nama <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   id="partner-name"
                   value={formData.name}
                   onChange={(e) => handleChange("name", e.target.value)}
-                  placeholder="e.g. PT Samudera Jaya"
+                  placeholder="mis. PT Samudera Jaya"
                   disabled={loading}
                 />
               </div>
@@ -257,12 +257,12 @@ const PartnerForm = ({
               {/* Type + is_company */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="partner-type">Type</Label>
+                  <Label htmlFor="partner-type">Tipe</Label>
                   <Input
                     id="partner-type"
                     value={formData.type}
                     onChange={(e) => handleChange("type", e.target.value)}
-                    placeholder="e.g. contact"
+                    placeholder="mis. contact"
                     disabled={loading}
                   />
                 </div>
@@ -277,7 +277,7 @@ const PartnerForm = ({
                       }
                       disabled={loading}
                     />
-                    <span className="text-sm">Is a company</span>
+                    <span className="text-sm">Adalah perusahaan</span>
                   </label>
                 </div>
               </div>
@@ -310,7 +310,7 @@ const PartnerForm = ({
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="partner-phone">Phone</Label>
+                  <Label htmlFor="partner-phone">Telepon</Label>
                   <Input
                     id="partner-phone"
                     type="tel"
@@ -321,7 +321,7 @@ const PartnerForm = ({
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="partner-mobile">Mobile</Label>
+                  <Label htmlFor="partner-mobile">Ponsel</Label>
                   <Input
                     id="partner-mobile"
                     type="tel"
@@ -336,17 +336,17 @@ const PartnerForm = ({
               {/* VAT + Address */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="partner-vat">VAT</Label>
+                  <Label htmlFor="partner-vat">NPWP</Label>
                   <Input
                     id="partner-vat"
                     value={formData.vat}
                     onChange={(e) => handleChange("vat", e.target.value)}
-                    placeholder="e.g. 01.123.456.7-890.000"
+                    placeholder="mis. 01.123.456.7-890.000"
                     disabled={loading}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="partner-zip">ZIP</Label>
+                  <Label htmlFor="partner-zip">Kode Pos</Label>
                   <Input
                     id="partner-zip"
                     value={formData.zip}
@@ -357,7 +357,7 @@ const PartnerForm = ({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="partner-street">Street</Label>
+                <Label htmlFor="partner-street">Jalan</Label>
                 <Input
                   id="partner-street"
                   value={formData.street}
@@ -367,7 +367,7 @@ const PartnerForm = ({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="partner-street2">Street 2</Label>
+                <Label htmlFor="partner-street2">Jalan 2</Label>
                 <Input
                   id="partner-street2"
                   value={formData.street2}
@@ -378,7 +378,7 @@ const PartnerForm = ({
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="partner-city">City</Label>
+                  <Label htmlFor="partner-city">Kota</Label>
                   <Input
                     id="partner-city"
                     value={formData.city}
@@ -391,7 +391,7 @@ const PartnerForm = ({
               {/* Parent + Vessel */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="partner-parent">Parent Company</Label>
+                  <Label htmlFor="partner-parent">Perusahaan Induk</Label>
                   <Select
                     value={formData.parent_id || NONE_VALUE}
                     onValueChange={(value) =>
@@ -402,10 +402,10 @@ const PartnerForm = ({
                     }
                   >
                     <SelectTrigger id="partner-parent" disabled={loading}>
-                      <SelectValue placeholder="None" />
+                      <SelectValue placeholder="Tidak ada" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value={NONE_VALUE}>None</SelectItem>
+                      <SelectItem value={NONE_VALUE}>Tidak ada</SelectItem>
                       {parentOptions.map((p) => (
                         <SelectItem key={p.id} value={String(p.id)}>
                           {p.name}
@@ -416,7 +416,7 @@ const PartnerForm = ({
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="partner-vessel">Vessel</Label>
+                  <Label htmlFor="partner-vessel">Kapal</Label>
                   <Select
                     value={formData.vessel_id || NONE_VALUE}
                     onValueChange={(value) =>
@@ -427,10 +427,10 @@ const PartnerForm = ({
                     }
                   >
                     <SelectTrigger id="partner-vessel" disabled={loading}>
-                      <SelectValue placeholder="None" />
+                      <SelectValue placeholder="Tidak ada" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value={NONE_VALUE}>None</SelectItem>
+                      <SelectItem value={NONE_VALUE}>Tidak ada</SelectItem>
                       {vessels.map((v) => (
                         <SelectItem key={v.id} value={String(v.id)}>
                           {v.name}
@@ -465,7 +465,7 @@ const PartnerForm = ({
                     }
                     disabled={loading}
                   />
-                  <span className="text-sm">Supplier</span>
+                  <span className="text-sm">Vendor</span>
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
@@ -475,7 +475,7 @@ const PartnerForm = ({
                     onChange={(e) => handleChange("active", e.target.checked)}
                     disabled={loading}
                   />
-                  <span className="text-sm">Active</span>
+                  <span className="text-sm">Aktif</span>
                 </label>
               </div>
             </div>
@@ -489,18 +489,18 @@ const PartnerForm = ({
             onClick={handleCancel}
             disabled={loading}
           >
-            Cancel
+            Batal
           </Button>
           <Button type="submit" form="partner-form" disabled={loading}>
             {loading ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                {isEditing ? "Updating..." : "Creating..."}
+                {isEditing ? "Memperbarui..." : "Membuat..."}
               </>
             ) : isEditing ? (
-              "Update Partner"
+              "Perbarui Mitra"
             ) : (
-              "Create Partner"
+              "Buat Mitra"
             )}
           </Button>
         </DialogFooter>

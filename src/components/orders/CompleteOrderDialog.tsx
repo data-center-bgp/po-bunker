@@ -52,7 +52,7 @@ const CompleteOrderDialog = ({
     try {
       setOrder(await ordersService.getOrderById(id));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load the order");
+      setError(err instanceof Error ? err.message : "Gagal memuat PO");
     }
   }, []);
 
@@ -91,7 +91,7 @@ const CompleteOrderDialog = ({
       onCompleted();
       onOpenChange(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to complete order");
+      setError(err instanceof Error ? err.message : "Gagal menyelesaikan PO");
     } finally {
       setSaving(false);
     }
@@ -103,12 +103,12 @@ const CompleteOrderDialog = ({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <CheckCircle className="h-5 w-5" />
-            Complete order {order?.name}
+            Selesaikan PO {order?.name}
           </DialogTitle>
           <DialogDescription>
-            Upload the Delivery Order (DO) and enter the actual quantity
-            delivered for each line. A completed order cannot be changed or
-            cancelled.
+            Unggah Delivery Order (DO) dan isi kuantitas aktual yang diterima
+            untuk setiap baris. PO yang sudah selesai tidak dapat diubah atau
+            dibatalkan.
           </DialogDescription>
         </DialogHeader>
 
@@ -139,17 +139,17 @@ const CompleteOrderDialog = ({
 
             <div>
               <h4 className="mb-2 text-sm font-semibold">
-                2. Actual quantity per line
+                2. Kuantitas aktual per baris
               </h4>
               <div className="rounded-md border">
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/50 hover:bg-muted/50">
-                      <TableHead>Product</TableHead>
-                      <TableHead>Vessel</TableHead>
-                      <TableHead className="text-right">Ordered</TableHead>
-                      <TableHead className="w-36 text-right">Actual</TableHead>
-                      <TableHead className="text-right">Difference</TableHead>
+                      <TableHead>Produk</TableHead>
+                      <TableHead>Kapal</TableHead>
+                      <TableHead className="text-right">Dipesan</TableHead>
+                      <TableHead className="w-36 text-right">Aktual</TableHead>
+                      <TableHead className="text-right">Selisih</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -193,7 +193,7 @@ const CompleteOrderDialog = ({
                 </Table>
               </div>
               <p className="mt-2 text-right text-sm text-muted-foreground">
-                Actual amount (quantity x unit price):{" "}
+                Jumlah aktual (kuantitas x harga satuan):{" "}
                 <span className="font-semibold text-foreground">
                   {money(actualAmount)}
                 </span>
@@ -208,16 +208,16 @@ const CompleteOrderDialog = ({
             onClick={() => onOpenChange(false)}
             disabled={saving}
           >
-            Close
+            Tutup
           </Button>
           <Button
             onClick={handleComplete}
             disabled={saving || !order || !hasDocument || !allQuantities}
             title={
               !hasDocument
-                ? "Upload the Delivery Order first"
+                ? "Unggah Delivery Order (DO) terlebih dahulu"
                 : !allQuantities
-                  ? "Enter the actual quantity for every line"
+                  ? "Isi kuantitas aktual untuk setiap baris"
                   : undefined
             }
           >
@@ -226,7 +226,7 @@ const CompleteOrderDialog = ({
             ) : (
               <CheckCircle className="h-4 w-4" />
             )}
-            Complete order
+            Selesaikan PO
           </Button>
         </DialogFooter>
       </DialogContent>

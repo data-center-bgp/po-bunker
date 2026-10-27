@@ -45,7 +45,7 @@ const VesselApiGate = () => {
       setError(null);
       setVessels(await lookupsService.getVessels());
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to fetch vessels");
+      setError(err instanceof Error ? err.message : "Gagal memuat data kapal");
       setVessels([]);
     } finally {
       setLoading(false);
@@ -64,7 +64,7 @@ const VesselApiGate = () => {
       setSyncResult(await lookupsService.syncVesselsFromSms());
       await fetchVessels();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to sync vessels");
+      setError(err instanceof Error ? err.message : "Gagal menyinkronkan kapal");
     } finally {
       setSyncing(false);
     }
@@ -104,11 +104,11 @@ const VesselApiGate = () => {
       {/* Header */}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Shipping Vessels</h2>
+          <h2 className="text-2xl font-bold tracking-tight">Kapal</h2>
           <p className="text-muted-foreground">
-            Browse and search shipping vessels.
+            Telusuri dan cari kapal.
             {lastSynced &&
-              ` Last synced ${new Date(lastSynced).toLocaleString("en-GB", {
+              ` Terakhir disinkronkan ${new Date(lastSynced).toLocaleString("id-ID", {
                 day: "2-digit",
                 month: "short",
                 year: "numeric",
@@ -124,7 +124,7 @@ const VesselApiGate = () => {
             ) : (
               <RefreshCw className="h-4 w-4" />
             )}
-            Sync from SMS
+            Sinkronkan dari SMS
           </Button>
         )}
       </div>
@@ -132,10 +132,10 @@ const VesselApiGate = () => {
       {syncResult && (
         <div className="flex items-center gap-2 rounded-lg border border-green-600/40 bg-green-600/10 p-3 text-sm text-green-700">
           <CheckCircle2 className="h-4 w-4 shrink-0" />
-          Synced {syncResult.total} vessel(s): {syncResult.created} new,{" "}
-          {syncResult.updated + syncResult.adopted} updated,{" "}
-          {syncResult.deactivated} deactivated
-          {syncResult.skipped > 0 && `, ${syncResult.skipped} skipped`}.
+          Sinkronisasi {syncResult.total} kapal: {syncResult.created} baru,{" "}
+          {syncResult.updated + syncResult.adopted} diperbarui,{" "}
+          {syncResult.deactivated} dinonaktifkan
+          {syncResult.skipped > 0 && `, ${syncResult.skipped} dilewati`}.
         </div>
       )}
 
@@ -144,7 +144,7 @@ const VesselApiGate = () => {
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           type="text"
-          placeholder="Search by vessel name or code..."
+          placeholder="Cari berdasarkan nama atau kode kapal..."
           value={query}
           onChange={(e) => handleQueryChange(e.target.value)}
           className="pl-9"
@@ -162,21 +162,21 @@ const VesselApiGate = () => {
       {/* Results */}
       <div className="rounded-lg border bg-card">
         <div className="flex items-center justify-between border-b px-4 py-3">
-          <h3 className="text-sm font-semibold">Results</h3>
+          <h3 className="text-sm font-semibold">Hasil</h3>
           {!loading && (
-            <Badge variant="secondary">{filtered.length} vessel(s)</Badge>
+            <Badge variant="secondary">{filtered.length} kapal</Badge>
           )}
         </div>
 
         {loading ? (
           <div className="p-8 text-center text-sm text-muted-foreground">
-            Loading vessels...
+            Memuat data kapal...
           </div>
         ) : filtered.length === 0 ? (
           <div className="p-8 text-center text-sm text-muted-foreground">
             {vessels.length === 0
-              ? "No vessels found."
-              : "No vessels match your search."}
+              ? "Kapal tidak ditemukan."
+              : "Tidak ada kapal yang sesuai dengan pencarian."}
           </div>
         ) : (
           <>
@@ -184,16 +184,16 @@ const VesselApiGate = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Code</TableHead>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Fleet</TableHead>
-                    <TableHead>Operation Head</TableHead>
-                    <TableHead>Company</TableHead>
-                    <TableHead>Gross Tonnage</TableHead>
-                    <TableHead>Call Sign</TableHead>
+                    <TableHead>Kode</TableHead>
+                    <TableHead>Nama</TableHead>
+                    <TableHead>Tipe</TableHead>
+                    <TableHead>Armada</TableHead>
+                    <TableHead>Kepala Operasi</TableHead>
+                    <TableHead>Perusahaan</TableHead>
+                    <TableHead>Tonase Kotor</TableHead>
+                    <TableHead>Tanda Panggilan</TableHead>
                     <TableHead>IMO</TableHead>
-                    <TableHead>Active</TableHead>
+                    <TableHead>Aktif</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -216,7 +216,7 @@ const VesselApiGate = () => {
                       <TableCell>{v.imo_no ? v.imo_no : "-"}</TableCell>
                       <TableCell>
                         <Badge variant={v.active ? "success" : "secondary"}>
-                          {v.active ? "Active" : "Inactive"}
+                          {v.active ? "Aktif" : "Nonaktif"}
                         </Badge>
                       </TableCell>
                     </TableRow>
@@ -228,7 +228,7 @@ const VesselApiGate = () => {
             {/* Pagination */}
             <div className="flex items-center justify-between border-t px-4 py-3 text-sm">
               <span className="text-muted-foreground">
-                Showing {start}–{end} of {filtered.length}
+                Menampilkan {start}–{end} dari {filtered.length}
               </span>
               <div className="flex items-center gap-2">
                 <Button
@@ -238,10 +238,10 @@ const VesselApiGate = () => {
                   disabled={safePage <= 1}
                 >
                   <ChevronLeft className="h-4 w-4" />
-                  Prev
+                  Sebelumnya
                 </Button>
                 <span className="text-muted-foreground">
-                  Page {safePage} of {totalPages}
+                  Halaman {safePage} dari {totalPages}
                 </span>
                 <Button
                   variant="outline"
@@ -251,7 +251,7 @@ const VesselApiGate = () => {
                   }
                   disabled={safePage >= totalPages}
                 >
-                  Next
+                  Berikutnya
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>

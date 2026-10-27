@@ -278,7 +278,7 @@ const OrderForm = ({
       setVessels(await lookupsService.getVessels());
     } catch (err) {
       console.error("Error fetching vessels:", err);
-      setError(err instanceof Error ? err.message : "Failed to fetch vessels");
+      setError(err instanceof Error ? err.message : "Gagal memuat data kapal");
     } finally {
       setLoadingVessels(false);
     }
@@ -291,7 +291,7 @@ const OrderForm = ({
     } catch (err) {
       console.error("Error fetching companies:", err);
       setError(
-        err instanceof Error ? err.message : "Failed to fetch companies",
+        err instanceof Error ? err.message : "Gagal memuat data perusahaan",
       );
     } finally {
       setLoadingCompanies(false);
@@ -304,7 +304,7 @@ const OrderForm = ({
       setPartners(await partnersService.getPartners());
     } catch (err) {
       console.error("Error fetching partners:", err);
-      setError(err instanceof Error ? err.message : "Failed to fetch partners");
+      setError(err instanceof Error ? err.message : "Gagal memuat data mitra");
     } finally {
       setLoadingPartners(false);
     }
@@ -316,7 +316,7 @@ const OrderForm = ({
       setProducts(await lookupsService.getProducts());
     } catch (err) {
       console.error("Error fetching products:", err);
-      setError(err instanceof Error ? err.message : "Failed to fetch products");
+      setError(err instanceof Error ? err.message : "Gagal memuat data produk");
     } finally {
       setLoadingProducts(false);
     }
@@ -402,7 +402,7 @@ const OrderForm = ({
       !header.orderType ||
       !header.dateOrder
     ) {
-      setError("Please fill in all required header fields.");
+      setError("Lengkapi semua kolom wajib pada bagian header.");
       setLoading(false);
       return;
     }
@@ -410,17 +410,17 @@ const OrderForm = ({
     const discountInput = parseFloat(header.discount || "0");
     const taxInput = parseFloat(header.taxPercent || "0");
     if (Number.isNaN(discountInput) || discountInput < 0) {
-      setError("Discount must be zero or more.");
+      setError("Diskon harus bernilai nol atau lebih.");
       setLoading(false);
       return;
     }
     if (Number.isNaN(taxInput) || taxInput < 0 || taxInput > 100) {
-      setError("VAT % must be between 0 and 100.");
+      setError("PPN (%) harus antara 0 dan 100.");
       setLoading(false);
       return;
     }
     if (discountInput > subtotal) {
-      setError("The discount is larger than the order total.");
+      setError("Diskon melebihi total PO.");
       setLoading(false);
       return;
     }
@@ -435,7 +435,7 @@ const OrderForm = ({
         !l.uomId
       ) {
         setError(
-          `Line ${i + 1}: Please fill in product, vessel, quantity, and unit price.`,
+          `Baris ${i + 1}: Lengkapi produk, kapal, kuantitas, dan harga satuan.`,
         );
         setLoading(false);
         return;
@@ -482,7 +482,7 @@ const OrderForm = ({
       onSuccess();
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Failed to create order",
+        err instanceof Error ? err.message : "Gagal membuat PO",
       );
       console.error(
         "Error creating order:",
@@ -506,12 +506,12 @@ const OrderForm = ({
         <DialogHeader className="px-6 pt-6">
           <DialogTitle className="flex items-center gap-2">
             <Package className="h-5 w-5" />
-            {isCopy ? "Copy as New Order" : "Create New Order"}
+            {isCopy ? "Salin sebagai PO Baru" : "Buat Purchase Order (PO) Baru"}
           </DialogTitle>
           <DialogDescription>
             {isCopy
-              ? "A copy of the cancelled order. Check the details, then submit it as a new order."
-              : "Fill in the details below to submit a new purchase order. A submitted order cannot be edited: cancel it and create a new one to fix a mistake."}
+              ? "Salinan dari PO yang dibatalkan. Periksa detailnya, lalu ajukan sebagai PO baru."
+              : "Isi detail berikut untuk mengajukan PO baru. PO yang sudah diajukan tidak dapat diubah: batalkan lalu buat PO baru untuk memperbaiki kesalahan."}
           </DialogDescription>
         </DialogHeader>
 
@@ -530,7 +530,7 @@ const OrderForm = ({
               {/* Order Details Section */}
               <div>
                 <h4 className="text-sm font-semibold text-foreground mb-3">
-                  Order Details
+                  Detail PO
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
@@ -547,7 +547,7 @@ const OrderForm = ({
                       <SelectTrigger>
                         <SelectValue
                           placeholder={
-                            loadingPartners ? "Loading..." : "Select customer"
+                            loadingPartners ? "Memuat..." : "Pilih customer"
                           }
                         />
                       </SelectTrigger>
@@ -566,7 +566,7 @@ const OrderForm = ({
 
                   <div className="space-y-2">
                     <Label>
-                      Company <span className="text-destructive">*</span>
+                      Perusahaan <span className="text-destructive">*</span>
                     </Label>
                     <Select
                       value={header.companyId}
@@ -578,7 +578,7 @@ const OrderForm = ({
                       <SelectTrigger>
                         <SelectValue
                           placeholder={
-                            loadingCompanies ? "Loading..." : "Select company"
+                            loadingCompanies ? "Memuat..." : "Pilih perusahaan"
                           }
                         />
                       </SelectTrigger>
@@ -599,7 +599,7 @@ const OrderForm = ({
 
                   <div className="space-y-2">
                     <Label>
-                      Order Type <span className="text-destructive">*</span>
+                      Jenis PO <span className="text-destructive">*</span>
                     </Label>
                     <Select
                       value={header.orderType}
@@ -608,21 +608,21 @@ const OrderForm = ({
                       }
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Select order type" />
+                        <SelectValue placeholder="Pilih jenis PO" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="bunker_fuel">Bunker Fuel</SelectItem>
+                        <SelectItem value="bunker_fuel">Bunker BBM</SelectItem>
                         <SelectItem value="bunker_water">
-                          Bunker Fresh Water
+                          Bunker Air Tawar
                         </SelectItem>
-                        <SelectItem value="logistic">Logistic</SelectItem>
+                        <SelectItem value="logistic">Logistik</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
 
                   <div className="space-y-2">
                     <Label htmlFor="dateOrder">
-                      Order Date & Time{" "}
+                      Tanggal & Waktu PO{" "}
                       <span className="text-destructive">*</span>
                     </Label>
                     <Input
@@ -644,11 +644,11 @@ const OrderForm = ({
               {/* Vendor reference & pricing */}
               <div>
                 <h4 className="text-sm font-semibold text-foreground mb-3">
-                  Vendor Reference & Pricing
+                  Referensi Vendor & Harga
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>Vendor Document</Label>
+                    <Label>Dokumen Vendor</Label>
                     <Select
                       value={header.optionOrder}
                       onValueChange={(val) =>
@@ -659,26 +659,26 @@ const OrderForm = ({
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="quotation">Quotation</SelectItem>
+                        <SelectItem value="quotation">Penawaran</SelectItem>
                         <SelectItem value="invoice">Invoice</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="partnerRef">Vendor Document No.</Label>
+                    <Label htmlFor="partnerRef">No. Dokumen Vendor</Label>
                     <Input
                       id="partnerRef"
                       value={header.partnerRef}
                       onChange={(e) =>
                         setHeader((h) => ({ ...h, partnerRef: e.target.value }))
                       }
-                      placeholder="Number on the vendor's quotation/invoice"
+                      placeholder="No. penawaran/invoice vendor"
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="dateVendor">Vendor Document Date</Label>
+                    <Label htmlFor="dateVendor">Tanggal Dokumen Vendor</Label>
                     <Input
                       type="date"
                       id="dateVendor"
@@ -690,7 +690,7 @@ const OrderForm = ({
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="dateBunker">Bunker Date & Time</Label>
+                    <Label htmlFor="dateBunker">Tanggal & Waktu Bunker</Label>
                     <Input
                       type="datetime-local"
                       id="dateBunker"
@@ -702,7 +702,7 @@ const OrderForm = ({
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="discount">Discount (Rp)</Label>
+                    <Label htmlFor="discount">Diskon (Rp)</Label>
                     <Input
                       type="number"
                       id="discount"
@@ -716,7 +716,7 @@ const OrderForm = ({
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="taxPercent">VAT (%)</Label>
+                    <Label htmlFor="taxPercent">PPN (%)</Label>
                     <Input
                       type="number"
                       id="taxPercent"
@@ -738,7 +738,7 @@ const OrderForm = ({
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <h4 className="text-sm font-semibold text-foreground">
-                    Product Lines{" "}
+                    Baris Produk{" "}
                     <span className="text-muted-foreground font-normal">
                       ({lines.length})
                     </span>
@@ -750,7 +750,7 @@ const OrderForm = ({
                     onClick={addLine}
                   >
                     <Plus className="h-4 w-4 mr-1" />
-                    Add Line
+                    Tambah Baris
                   </Button>
                 </div>
 
@@ -770,7 +770,7 @@ const OrderForm = ({
                       >
                         <div className="flex items-center justify-between">
                           <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                            Line {idx + 1}
+                            Baris {idx + 1}
                           </span>
                           <div className="flex items-center gap-2">
                             <span className="text-sm text-muted-foreground">
@@ -790,8 +790,8 @@ const OrderForm = ({
                               disabled={lines.length === 1}
                               title={
                                 lines.length === 1
-                                  ? "At least one line is required"
-                                  : "Remove line"
+                                  ? "Minimal satu baris diperlukan"
+                                  : "Hapus baris"
                               }
                             >
                               <Trash2 className="h-4 w-4" />
@@ -803,7 +803,7 @@ const OrderForm = ({
                           {/* Row 1 */}
                           <div className="space-y-2">
                             <Label>
-                              Product{" "}
+                              Produk{" "}
                               <span className="text-destructive">*</span>
                             </Label>
                             <Select
@@ -817,8 +817,8 @@ const OrderForm = ({
                                 <SelectValue
                                   placeholder={
                                     loadingProducts
-                                      ? "Loading..."
-                                      : "Select product"
+                                      ? "Memuat..."
+                                      : "Pilih produk"
                                   }
                                 />
                               </SelectTrigger>
@@ -836,7 +836,7 @@ const OrderForm = ({
                           </div>
 
                           <div className="space-y-2">
-                            <Label>Requested By</Label>
+                            <Label>Diminta Oleh</Label>
                             <Popover
                               open={requestedByOpenIdx === idx}
                               onOpenChange={(open) =>
@@ -853,24 +853,24 @@ const OrderForm = ({
                                 >
                                   <span className="truncate">
                                     {loadingUsers
-                                      ? "Loading..."
+                                      ? "Memuat..."
                                       : line.requestedById
                                         ? (users.find(
                                             (u) =>
                                               u.id.toString() ===
                                               line.requestedById,
-                                          )?.name ?? "Select person")
-                                        : "Select person"}
+                                          )?.name ?? "Pilih orang")
+                                        : "Pilih orang"}
                                   </span>
                                   <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                 </Button>
                               </PopoverTrigger>
                               <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                                 <Command>
-                                  <CommandInput placeholder="Search person..." />
+                                  <CommandInput placeholder="Cari orang..." />
                                   <CommandList className="max-h-[300px] overflow-y-auto">
                                     <CommandEmpty>
-                                      No person found.
+                                      Orang tidak ditemukan.
                                     </CommandEmpty>
                                     <CommandGroup>
                                       {users.map((u) => (
@@ -909,7 +909,7 @@ const OrderForm = ({
                           {/* Row 2 */}
                           <div className="space-y-2">
                             <Label>
-                              Vessel <span className="text-destructive">*</span>
+                              Kapal <span className="text-destructive">*</span>
                             </Label>
                             <Popover
                               open={vesselOpenIdx === idx}
@@ -927,7 +927,7 @@ const OrderForm = ({
                                 >
                                   <span className="truncate">
                                     {loadingVessels
-                                      ? "Loading..."
+                                      ? "Memuat..."
                                       : line.vesselId
                                         ? (() => {
                                             const v = vessels.find(
@@ -937,19 +937,19 @@ const OrderForm = ({
                                             );
                                             return v
                                               ? vesselLabel(v)
-                                              : "Select vessel";
+                                              : "Pilih kapal";
                                           })()
-                                        : "Select vessel"}
+                                        : "Pilih kapal"}
                                   </span>
                                   <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                 </Button>
                               </PopoverTrigger>
                               <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                                 <Command>
-                                  <CommandInput placeholder="Search vessel..." />
+                                  <CommandInput placeholder="Cari kapal..." />
                                   <CommandList className="max-h-[300px] overflow-y-auto">
                                     <CommandEmpty>
-                                      No vessel found.
+                                      Kapal tidak ditemukan.
                                     </CommandEmpty>
                                     <CommandGroup>
                                       {vessels
@@ -994,7 +994,7 @@ const OrderForm = ({
                           </div>
 
                           <div className="space-y-2">
-                            <Label>Region</Label>
+                            <Label>Wilayah</Label>
                             <Popover
                               open={regionOpenIdx === idx}
                               onOpenChange={(open) =>
@@ -1011,23 +1011,23 @@ const OrderForm = ({
                                 >
                                   <span className="truncate">
                                     {loadingRegions
-                                      ? "Loading..."
+                                      ? "Memuat..."
                                       : line.regionId
                                         ? (regions.find(
                                             (r) =>
                                               r.id.toString() === line.regionId,
-                                          )?.name ?? "Select region")
-                                        : "Select region"}
+                                          )?.name ?? "Pilih wilayah")
+                                        : "Pilih wilayah"}
                                   </span>
                                   <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                 </Button>
                               </PopoverTrigger>
                               <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                                 <Command>
-                                  <CommandInput placeholder="Search region..." />
+                                  <CommandInput placeholder="Cari wilayah..." />
                                   <CommandList className="max-h-[300px] overflow-y-auto">
                                     <CommandEmpty>
-                                      No region found.
+                                      Wilayah tidak ditemukan.
                                     </CommandEmpty>
                                     <CommandGroup>
                                       {regions.map((region) => (
@@ -1065,19 +1065,19 @@ const OrderForm = ({
 
                           {/* Row 3 */}
                           <div className="space-y-2">
-                            <Label>Project</Label>
+                            <Label>Proyek</Label>
                             <Input
                               type="text"
                               value={line.project}
                               onChange={(e) =>
                                 updateLine(idx, { project: e.target.value })
                               }
-                              placeholder="Enter project name"
+                              placeholder="Masukkan nama proyek"
                             />
                           </div>
 
                           <div className="space-y-2">
-                            <Label>Code Budget</Label>
+                            <Label>Kode Budget</Label>
                             <Popover
                               open={codeBudgetOpenIdx === idx}
                               onOpenChange={(open) =>
@@ -1094,24 +1094,24 @@ const OrderForm = ({
                                 >
                                   <span className="truncate">
                                     {loadingCodeBudgets
-                                      ? "Loading..."
+                                      ? "Memuat..."
                                       : line.codeBudgetId
                                         ? (codeBudgets.find(
                                             (cb) =>
                                               cb.id.toString() ===
                                               line.codeBudgetId,
-                                          )?.name ?? "Select code budget")
-                                        : "Select code budget"}
+                                          )?.name ?? "Pilih kode budget")
+                                        : "Pilih kode budget"}
                                   </span>
                                   <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                 </Button>
                               </PopoverTrigger>
                               <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                                 <Command>
-                                  <CommandInput placeholder="Search code budget..." />
+                                  <CommandInput placeholder="Cari kode budget..." />
                                   <CommandList className="max-h-[300px] overflow-y-auto">
                                     <CommandEmpty>
-                                      No code budget found.
+                                      Kode budget tidak ditemukan.
                                     </CommandEmpty>
                                     <CommandGroup>
                                       {codeBudgets.map((cb) => (
@@ -1149,7 +1149,7 @@ const OrderForm = ({
 
                           {/* Row 4 */}
                           <div className="space-y-2">
-                            <Label>Priority</Label>
+                            <Label>Prioritas</Label>
                             <Select
                               value={line.priority}
                               onValueChange={(val) =>
@@ -1157,21 +1157,21 @@ const OrderForm = ({
                               }
                             >
                               <SelectTrigger>
-                                <SelectValue placeholder="Select priority" />
+                                <SelectValue placeholder="Pilih prioritas" />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="low">L — Low</SelectItem>
+                                <SelectItem value="low">L — Rendah</SelectItem>
                                 <SelectItem value="medium">
-                                  M — Medium
+                                  M — Sedang
                                 </SelectItem>
-                                <SelectItem value="high">H — High</SelectItem>
+                                <SelectItem value="high">H — Tinggi</SelectItem>
                               </SelectContent>
                             </Select>
                           </div>
 
                           <div className="space-y-2">
                             <Label>
-                              Volume / Quantity{" "}
+                              Volume / Kuantitas{" "}
                               <span className="text-destructive">*</span>
                             </Label>
                             <Input
@@ -1181,25 +1181,25 @@ const OrderForm = ({
                               onChange={(e) =>
                                 updateLine(idx, { quantity: e.target.value })
                               }
-                              placeholder="Enter quantity"
+                              placeholder="Masukkan kuantitas"
                               required
                             />
                           </div>
 
                           {/* Row 5 */}
                           <div className="space-y-2">
-                            <Label>Unit of Measure</Label>
+                            <Label>Satuan</Label>
                             <Input
                               value={selectedProduct?.uom?.name || ""}
                               readOnly
-                              placeholder="Auto-populated"
+                              placeholder="Terisi otomatis"
                               className="bg-muted"
                             />
                           </div>
 
                           <div className="space-y-2">
                             <Label>
-                              Price{" "}
+                              Harga{" "}
                               <span className="text-destructive">*</span>
                             </Label>
                             <Input
@@ -1209,7 +1209,7 @@ const OrderForm = ({
                               onChange={(e) =>
                                 updateLine(idx, { unitPrice: e.target.value })
                               }
-                              placeholder="Enter unit price"
+                              placeholder="Masukkan harga satuan"
                               required
                             />
                           </div>
@@ -1222,25 +1222,25 @@ const OrderForm = ({
 
                 <div className="mt-3 flex flex-col items-end gap-1 text-sm text-muted-foreground">
                   <div>
-                    Lines total (active lines):{" "}
+                    Total baris (baris aktif):{" "}
                     <span className="text-foreground">
                       {formatCurrency(subtotal)}
                     </span>
                   </div>
                   <div>
-                    Discount:{" "}
+                    Diskon:{" "}
                     <span className="text-foreground">
                       - {formatCurrency(discountValue)}
                     </span>
                   </div>
                   <div>
-                    VAT {parseFloat(header.taxPercent) || 0}%:{" "}
+                    PPN {parseFloat(header.taxPercent) || 0}%:{" "}
                     <span className="text-foreground">
                       {formatCurrency(taxValue)}
                     </span>
                   </div>
                   <div>
-                    Grand total:{" "}
+                    Total keseluruhan:{" "}
                     <span className="font-semibold text-foreground text-base">
                       {formatCurrency(grandTotal)}
                     </span>
@@ -1253,7 +1253,7 @@ const OrderForm = ({
               {/* Notes */}
               <div className="space-y-2">
                 <Label htmlFor="notes">
-                  Notes <span className="text-destructive">*</span>
+                  Catatan <span className="text-destructive">*</span>
                 </Label>
                 <div className="[&_.ql-toolbar]:rounded-t-md [&_.ql-container]:rounded-b-md [&_.ql-toolbar]:border-border [&_.ql-container]:border-border [&_.ql-editor]:min-h-[100px]">
                   <ReactQuill
@@ -1262,7 +1262,7 @@ const OrderForm = ({
                     onChange={(value) =>
                       setHeader((h) => ({ ...h, notes: value }))
                     }
-                    placeholder="Enter order notes"
+                    placeholder="Masukkan catatan PO"
                     modules={{
                       toolbar: [
                         [{ header: [1, 2, 3, false] }],
@@ -1287,16 +1287,16 @@ const OrderForm = ({
             onClick={handleCancel}
             disabled={loading}
           >
-            Cancel
+            Batal
           </Button>
           <Button type="submit" form="order-form" disabled={loading}>
             {loading ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Submitting...
+                Mengajukan...
               </>
             ) : (
-              "Submit Order"
+              "Ajukan PO"
             )}
           </Button>
         </DialogFooter>

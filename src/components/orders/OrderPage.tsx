@@ -35,7 +35,7 @@ const OrdersPage = () => {
       setOrders(page.orders);
       setTotalCount(page.totalCount);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to fetch orders");
+      setError(err instanceof Error ? err.message : "Gagal memuat daftar PO");
     } finally {
       setLoading(false);
     }
@@ -73,15 +73,15 @@ const OrdersPage = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Orders</h2>
+          <h2 className="text-2xl font-bold tracking-tight">Daftar PO</h2>
           <p className="text-muted-foreground">
-            Submit purchase orders, then complete them with the Delivery Order.
+            Ajukan Purchase Order (PO), lalu selesaikan dengan Delivery Order (DO).
           </p>
         </div>
         {canWrite && (
           <Button onClick={() => openForm(null)}>
             <Plus className="h-4 w-4" />
-            Add New Order
+            Tambah PO Baru
           </Button>
         )}
       </div>

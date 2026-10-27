@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import { translateMessage } from "./helpers";
 
 // Private bucket with company logos and Delivery Order files (migrations 0005
 // and 0007).
@@ -11,7 +12,7 @@ export const storageService = {
     const { error } = await supabase.storage
       .from(BUCKET)
       .upload(path, file, { contentType: file.type, upsert: false });
-    if (error) throw new Error(error.message);
+    if (error) throw new Error(translateMessage(error.message));
   },
 
   removeFile: async (path: string): Promise<void> => {
@@ -21,10 +22,10 @@ export const storageService = {
   // Each upload gets a new file name, so an old logo is never overwritten.
   uploadCompanyLogo: async (companyId: number, file: File): Promise<string> => {
     if (!LOGO_TYPES.includes(file.type)) {
-      throw new Error("Please choose a PNG or JPG image.");
+      throw new Error("Pilih gambar PNG atau JPG.");
     }
     if (file.size > MAX_LOGO_BYTES) {
-      throw new Error("The image must be smaller than 1 MB.");
+      throw new Error("Ukuran gambar harus kurang dari 1 MB.");
     }
     const path = `logos/${companyId}/${Date.now()}.${file.type === "image/png" ? "png" : "jpg"}`;
     await storageService.uploadFile(path, file);

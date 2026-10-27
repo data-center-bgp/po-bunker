@@ -57,17 +57,17 @@ const TABS: Tab[] = [
   },
   {
     id: "orders",
-    name: "Orders",
+    name: "Daftar PO",
     icon: <ClipboardList className="h-5 w-5" />,
   },
   {
     id: "vessels",
-    name: "Shipping Vessels",
+    name: "Kapal",
     icon: <Ship className="h-5 w-5" />,
   },
   {
     id: "regions",
-    name: "Regions",
+    name: "Wilayah",
     icon: <MapPin className="h-5 w-5" />,
   },
   {
@@ -77,15 +77,15 @@ const TABS: Tab[] = [
   },
   {
     id: "companies",
-    name: "Companies",
+    name: "Perusahaan",
     icon: <Building className="h-5 w-5" />,
   },
 ];
 
 const NAV_SECTIONS: { label: string; tabIds: TabType[] }[] = [
-  { label: "General", tabIds: ["overview", "orders"] },
+  { label: "Umum", tabIds: ["overview", "orders"] },
   {
-    label: "Master Data",
+    label: "Data Master",
     tabIds: ["vessels", "regions", "partners", "companies"],
   },
 ];
@@ -168,6 +168,7 @@ const Sidebar = ({
             variant="ghost"
             size="icon"
             onClick={onToggle}
+            aria-label={isOpen ? "Ciutkan menu samping" : "Perluas menu samping"}
             className={cn(
               "h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground",
               !isOpen && "mx-auto",
@@ -221,7 +222,7 @@ const Sidebar = ({
                         {user?.email || "user@example.com"}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        Signed in
+                        Sudah masuk
                       </p>
                     </div>
                     <ChevronsUpDown className="h-4 w-4 shrink-0 text-muted-foreground" />
@@ -234,7 +235,7 @@ const Sidebar = ({
                 <p className="truncate text-sm font-medium text-foreground">
                   {user?.email || "user@example.com"}
                 </p>
-                <p className="text-xs text-muted-foreground">Account</p>
+                <p className="text-xs text-muted-foreground">Akun</p>
               </div>
               <Separator className="my-1.5" />
               <Button
@@ -244,7 +245,7 @@ const Sidebar = ({
                 onClick={onLogout}
               >
                 <LogOut className="h-4 w-4" />
-                Log out
+                Keluar
               </Button>
             </PopoverContent>
           </Popover>

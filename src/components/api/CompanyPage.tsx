@@ -42,7 +42,7 @@ const CompanyPage = () => {
       setCompanies(await companiesService.getCompanies());
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Failed to fetch companies",
+        err instanceof Error ? err.message : "Gagal memuat data perusahaan",
       );
       setCompanies([]);
     } finally {
@@ -101,15 +101,15 @@ const CompanyPage = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Companies</h2>
+          <h2 className="text-2xl font-bold tracking-tight">Perusahaan</h2>
           <p className="text-muted-foreground">
-            Browse, search, and manage companies.
+            Telusuri, cari, dan kelola perusahaan.
           </p>
         </div>
         {canWrite && (
           <Button onClick={handleAddNew}>
             <Plus className="h-4 w-4" />
-            Add New Company
+            Tambah Perusahaan
           </Button>
         )}
       </div>
@@ -119,7 +119,7 @@ const CompanyPage = () => {
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           type="text"
-          placeholder="Search by company name..."
+          placeholder="Cari berdasarkan nama perusahaan..."
           value={query}
           onChange={(e) => handleQueryChange(e.target.value)}
           className="pl-9"
@@ -137,21 +137,21 @@ const CompanyPage = () => {
       {/* Results */}
       <div className="rounded-lg border bg-card">
         <div className="flex items-center justify-between border-b px-4 py-3">
-          <h3 className="text-sm font-semibold">Results</h3>
+          <h3 className="text-sm font-semibold">Hasil</h3>
           {!loading && (
-            <Badge variant="secondary">{filtered.length} company(ies)</Badge>
+            <Badge variant="secondary">{filtered.length} perusahaan</Badge>
           )}
         </div>
 
         {loading ? (
           <div className="p-8 text-center text-sm text-muted-foreground">
-            Loading companies...
+            Memuat data perusahaan...
           </div>
         ) : filtered.length === 0 ? (
           <div className="p-8 text-center text-sm text-muted-foreground">
             {companies.length === 0
-              ? "No companies found."
-              : "No companies match your search."}
+              ? "Perusahaan tidak ditemukan."
+              : "Tidak ada perusahaan yang sesuai dengan pencarian."}
           </div>
         ) : (
           <>
@@ -159,14 +159,14 @@ const CompanyPage = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Code</TableHead>
-                    <TableHead>General Code</TableHead>
-                    <TableHead>Business Unit</TableHead>
-                    <TableHead>Region</TableHead>
-                    <TableHead>Currency</TableHead>
-                    <TableHead>Active</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead>Nama</TableHead>
+                    <TableHead>Kode</TableHead>
+                    <TableHead>Kode Umum</TableHead>
+                    <TableHead>Unit Bisnis</TableHead>
+                    <TableHead>Wilayah</TableHead>
+                    <TableHead>Mata Uang</TableHead>
+                    <TableHead>Aktif</TableHead>
+                    <TableHead className="text-right">Aksi</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -182,7 +182,7 @@ const CompanyPage = () => {
                         <Badge
                           variant={c.active ? "success" : "secondary"}
                         >
-                          {c.active ? "Active" : "Inactive"}
+                          {c.active ? "Aktif" : "Nonaktif"}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
@@ -191,7 +191,7 @@ const CompanyPage = () => {
                             variant="ghost"
                             size="icon"
                             onClick={() => handleEdit(c)}
-                            title="Edit"
+                            title="Ubah"
                           >
                             <Pencil className="h-4 w-4" />
                           </Button>
@@ -206,7 +206,7 @@ const CompanyPage = () => {
             {/* Pagination */}
             <div className="flex items-center justify-between border-t px-4 py-3 text-sm">
               <span className="text-muted-foreground">
-                Showing {start}–{end} of {filtered.length}
+                Menampilkan {start}–{end} dari {filtered.length}
               </span>
               <div className="flex items-center gap-2">
                 <Button
@@ -216,10 +216,10 @@ const CompanyPage = () => {
                   disabled={safePage <= 1}
                 >
                   <ChevronLeft className="h-4 w-4" />
-                  Prev
+                  Sebelumnya
                 </Button>
                 <span className="text-muted-foreground">
-                  Page {safePage} of {totalPages}
+                  Halaman {safePage} dari {totalPages}
                 </span>
                 <Button
                   variant="outline"
@@ -229,7 +229,7 @@ const CompanyPage = () => {
                   }
                   disabled={safePage >= totalPages}
                 >
-                  Next
+                  Berikutnya
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>

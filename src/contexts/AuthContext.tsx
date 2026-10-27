@@ -7,6 +7,7 @@ import {
 } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
+import { translateMessage } from "@/services/helpers";
 import type { Profile, UserRole } from "@/services/types";
 
 export interface AuthUser {
@@ -28,7 +29,7 @@ export interface AuthContextType {
 }
 
 const NO_ACCESS_MESSAGE =
-  "This account does not have access to PO Bunker. Please contact an administrator.";
+  "Akun ini tidak memiliki akses ke PO Bunker. Hubungi administrator.";
 
 const notReady = () => {
   throw new Error("AuthProvider is missing");
@@ -120,7 +121,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     });
     if (error) {
       throw new Error(
-        error.status === 400 ? "Invalid email or password" : error.message,
+        error.status === 400
+          ? "Email atau kata sandi salah"
+          : translateMessage(error.message),
       );
     }
     const profile = await loadProfile(data.session);

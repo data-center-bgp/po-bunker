@@ -38,7 +38,7 @@ const OrderRemarks = ({ order, onChanged }: OrderRemarksProps) => {
       await action();
       onChanged();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
+      setError(err instanceof Error ? err.message : "Terjadi kesalahan");
     } finally {
       setBusy(false);
     }
@@ -57,12 +57,12 @@ const OrderRemarks = ({ order, onChanged }: OrderRemarksProps) => {
     <div>
       <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
         <MessageSquare className="h-4 w-4" />
-        Remarks
+        Remark
       </h4>
       {error && <p className="mb-2 text-sm text-destructive">{error}</p>}
 
       {order.remarks.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No remarks yet.</p>
+        <p className="text-sm text-muted-foreground">Belum ada remark.</p>
       ) : (
         <ul className="space-y-1.5">
           {order.remarks.map((r) => (
@@ -73,7 +73,7 @@ const OrderRemarks = ({ order, onChanged }: OrderRemarksProps) => {
               }`}
             >
               <span>
-                Note: {new Date(r.remark_date).toLocaleDateString("en-GB")}{" "}
+                Catatan: {new Date(r.remark_date).toLocaleDateString("id-ID")}{" "}
                 {r.remark}
               </span>
               {canWrite && (
@@ -82,7 +82,7 @@ const OrderRemarks = ({ order, onChanged }: OrderRemarksProps) => {
                   size="icon"
                   className="h-6 w-6 shrink-0 text-destructive"
                   disabled={busy}
-                  title="Delete remark"
+                  title="Hapus remark"
                   onClick={() => run(() => ordersService.deleteRemark(r.id))}
                 >
                   <Trash2 className="h-3.5 w-3.5" />
@@ -109,19 +109,19 @@ const OrderRemarks = ({ order, onChanged }: OrderRemarksProps) => {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="merah">Red</SelectItem>
-              <SelectItem value="biru">Blue</SelectItem>
+              <SelectItem value="merah">Merah</SelectItem>
+              <SelectItem value="biru">Biru</SelectItem>
             </SelectContent>
           </Select>
           <Input
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder="Add a remark..."
+            placeholder="Tambah remark..."
             className="min-w-[200px] flex-1"
           />
           <Button type="submit" disabled={busy || !text.trim()}>
             {busy && <Loader2 className="h-4 w-4 animate-spin" />}
-            Add
+            Tambah
           </Button>
         </form>
       )}

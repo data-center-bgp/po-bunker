@@ -42,7 +42,7 @@ const RegionPage = () => {
       setRegions(await regionsService.getRegions());
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Failed to fetch regions",
+        err instanceof Error ? err.message : "Gagal memuat data wilayah",
       );
       setRegions([]);
     } finally {
@@ -101,15 +101,15 @@ const RegionPage = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Regions</h2>
+          <h2 className="text-2xl font-bold tracking-tight">Wilayah</h2>
           <p className="text-muted-foreground">
-            Browse, search, and manage regions.
+            Telusuri, cari, dan kelola wilayah.
           </p>
         </div>
         {canWrite && (
           <Button onClick={handleAddNew}>
             <Plus className="h-4 w-4" />
-            Add New Region
+            Tambah Wilayah
           </Button>
         )}
       </div>
@@ -119,7 +119,7 @@ const RegionPage = () => {
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           type="text"
-          placeholder="Search by region name..."
+          placeholder="Cari berdasarkan nama wilayah..."
           value={query}
           onChange={(e) => handleQueryChange(e.target.value)}
           className="pl-9"
@@ -137,21 +137,21 @@ const RegionPage = () => {
       {/* Results */}
       <div className="rounded-lg border bg-card">
         <div className="flex items-center justify-between border-b px-4 py-3">
-          <h3 className="text-sm font-semibold">Results</h3>
+          <h3 className="text-sm font-semibold">Hasil</h3>
           {!loading && (
-            <Badge variant="secondary">{filtered.length} region(s)</Badge>
+            <Badge variant="secondary">{filtered.length} wilayah</Badge>
           )}
         </div>
 
         {loading ? (
           <div className="p-8 text-center text-sm text-muted-foreground">
-            Loading regions...
+            Memuat data wilayah...
           </div>
         ) : filtered.length === 0 ? (
           <div className="p-8 text-center text-sm text-muted-foreground">
             {regions.length === 0
-              ? "No regions found."
-              : "No regions match your search."}
+              ? "Wilayah tidak ditemukan."
+              : "Tidak ada wilayah yang sesuai dengan pencarian."}
           </div>
         ) : (
           <>
@@ -159,14 +159,14 @@ const RegionPage = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Code</TableHead>
+                    <TableHead>Nama</TableHead>
+                    <TableHead>Kode</TableHead>
                     <TableHead>Level</TableHead>
-                    <TableHead>Parent</TableHead>
-                    <TableHead>BPS Code</TableHead>
-                    <TableHead>Companies</TableHead>
-                    <TableHead>Active</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead>Induk</TableHead>
+                    <TableHead>Kode BPS</TableHead>
+                    <TableHead>Perusahaan</TableHead>
+                    <TableHead>Aktif</TableHead>
+                    <TableHead className="text-right">Aksi</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -186,7 +186,7 @@ const RegionPage = () => {
                         <Badge
                           variant={r.active ? "success" : "secondary"}
                         >
-                          {r.active ? "Active" : "Inactive"}
+                          {r.active ? "Aktif" : "Nonaktif"}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
@@ -195,7 +195,7 @@ const RegionPage = () => {
                             variant="ghost"
                             size="icon"
                             onClick={() => handleEdit(r)}
-                            title="Edit"
+                            title="Ubah"
                           >
                             <Pencil className="h-4 w-4" />
                           </Button>
@@ -210,7 +210,7 @@ const RegionPage = () => {
             {/* Pagination */}
             <div className="flex items-center justify-between border-t px-4 py-3 text-sm">
               <span className="text-muted-foreground">
-                Showing {start}–{end} of {filtered.length}
+                Menampilkan {start}–{end} dari {filtered.length}
               </span>
               <div className="flex items-center gap-2">
                 <Button
@@ -220,10 +220,10 @@ const RegionPage = () => {
                   disabled={safePage <= 1}
                 >
                   <ChevronLeft className="h-4 w-4" />
-                  Prev
+                  Sebelumnya
                 </Button>
                 <span className="text-muted-foreground">
-                  Page {safePage} of {totalPages}
+                  Halaman {safePage} dari {totalPages}
                 </span>
                 <Button
                   variant="outline"
@@ -233,7 +233,7 @@ const RegionPage = () => {
                   }
                   disabled={safePage >= totalPages}
                 >
-                  Next
+                  Berikutnya
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>
