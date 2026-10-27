@@ -27,7 +27,7 @@ const PAGE_META: Record<
 > = {
   overview: {
     title: "Dashboard",
-    description: "Gambaran aktivitas purchase order di seluruh armada.",
+    description: "Ringkasan PO bunker: yang perlu diselesaikan, nilai, dan realisasi.",
     icon: LayoutDashboard,
   },
   orders: {
@@ -89,7 +89,7 @@ const Dashboard = () => {
   const renderContent = () => {
     switch (activeTab) {
       case "overview":
-        return <OverviewPage />;
+        return <OverviewPage onNavigate={setActiveTab} />;
 
       case "orders":
         return <OrdersPage />;
