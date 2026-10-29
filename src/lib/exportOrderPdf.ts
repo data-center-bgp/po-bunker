@@ -57,12 +57,19 @@ export const generateOrderPdf = async (
   const pageWidth = doc.internal.pageSize.getWidth();
   const contentWidth = pageWidth - MARGIN * 2;
 
-  // --- logo and title -------------------------------------------------------
-  let y = 8;
-  if (data.logo) {
-    const { w, h } = fit(data.logo, 60, 22);
-    doc.addImage(data.logo.dataUrl, data.logo.format, (pageWidth - w) / 2, y, w, h);
-    y += h + 3;
+  // --- letterhead and title ---------------------------------------------------
+  let y = 6;
+  if (data.letterhead) {
+    const { w, h } = fit(data.letterhead, contentWidth, 36);
+    doc.addImage(
+      data.letterhead.dataUrl,
+      data.letterhead.format,
+      (pageWidth - w) / 2,
+      y,
+      w,
+      h,
+    );
+    y += h + 2;
   }
   doc.setFont("helvetica", "bold");
   doc.setFontSize(12);

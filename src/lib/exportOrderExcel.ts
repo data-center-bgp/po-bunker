@@ -146,8 +146,10 @@ export const generateOrderExcel = async (
     return { w, h };
   };
 
-  // --- logo and title (rows 1-10) ---------------------------------------------
-  if (data.logo) addPicture(data.logo, 1.1, 0.2, 260, 110);
+  // --- letterhead and title (rows 1-10) -----------------------------------------
+  // Rows 1-8 are sized so that the letterhead (about 1120 x 195 px) fills them.
+  for (let r = 1; r <= 8; r++) ws.getRow(r).height = 18.5;
+  if (data.letterhead) addPicture(data.letterhead, 0.15, 0.1, 1120, 200);
 
   ws.getRow(9).height = 36;
   ws.getRow(10).height = 36;

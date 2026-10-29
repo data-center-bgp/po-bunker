@@ -35,7 +35,8 @@ export interface PrintLine {
 }
 
 export interface PrintData {
-  logo: PrintImage | null;
+  /** Company letterhead printed at the top of the form. */
+  letterhead: PrintImage | null;
   poNumber: string;
   poDate: string;
   /** Set for cancelled orders: printed in red under the title. */
@@ -134,12 +135,8 @@ export const buildPrintData = async (
   order: PurchaseOrder,
   loadImage: ImageLoader = storageService.getDataUrl,
 ): Promise<PrintData> => {
-  const logoSource = order.company?.logo_path
-    ? await loadImage(order.company.logo_path)
-    : null;
-
-  const [logo, ...signatures] = await Promise.all([
-    toImage(logoSource ?? (await fetchDataUrl("/logo-bpg.png"))),
+  const [letterhead, ...signatures] = await Promise.all([
+    fetchDataUrl("/letterhead.jpg").then(toImage),
     ...APPROVAL_LEVELS.map(async ({ level }) => {
       const path = order[`${level}_approved_signature_path`];
       return toImage(path ? await loadImage(path) : null);
@@ -150,7 +147,7 @@ export const buildPrintData = async (
   const address = [partner?.street, partner?.city].filter(Boolean).join(" ");
 
   return {
-    logo,
+    letterhead,
     poNumber: order.name,
     poDate: dateTime(order.date_order),
     cancelled:

@@ -289,7 +289,7 @@ viewers only read.
 ### 5.8 Exporting Orders
 
 Two export formats are available per order from the **action buttons** in the table. Both reproduce the bilingual
-"ORDER PEMBELIAN / PURCHASE ORDER" form of the old system (bunker layout): company logo, vendor block, line table,
+"ORDER PEMBELIAN / PURCHASE ORDER" form of the old system (bunker layout): the PT Barokah Gemilang Perkasa letterhead (`public/letterhead.jpg`), vendor block, line table,
 remarks, total / discount / VAT / grand total, amount in words (Terbilang), payment options and three signature boxes
 (empty on new orders; old orders keep their printed signatures). A cancelled order prints a red CANCELLED line with its reason.
 Both run in your browser.
