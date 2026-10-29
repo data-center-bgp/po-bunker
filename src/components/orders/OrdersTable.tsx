@@ -1,5 +1,6 @@
 import {
   ORDER_STATE_LABELS,
+  type OrderDocument,
   type OrderState,
   type PurchaseOrder,
 } from "@/services";
@@ -30,6 +31,8 @@ import {
   Printer,
   Download,
   CheckCircle,
+  CheckCircle2,
+  Circle,
   Copy,
   XCircle,
 } from "lucide-react";
@@ -63,11 +66,59 @@ const FILTERS: { key: Filter; label: string }[] = [
   { key: "cancelled", label: "Dibatalkan" },
 ];
 
-const stripHtml = (html: string) =>
-  html
-    .replace(/<[^>]*>/g, "")
-    .replace(/&nbsp;/g, " ")
-    .trim();
+// Documents tracked per order. A new type only needs an entry here.
+const DOCUMENT_CHECKLIST: {
+  type: OrderDocument["doc_type"];
+  label: string;
+  title: string;
+}[] = [{ type: "delivery_order", label: "DO", title: "Delivery Order" }];
+
+const DocumentChecklist = ({ order }: { order: PurchaseOrder }) => {
+  // A cancelled order never gets its documents.
+  if (order.state === "cancelled") {
+    return <span className="text-muted-foreground">-</span>;
+  }
+  return (
+    <ul className="space-y-1">
+      {DOCUMENT_CHECKLIST.map(({ type, label, title }) => {
+        const count = (order.documents ?? []).filter(
+          (d) => d.doc_type === type,
+        ).length;
+        const present = count > 0;
+        return (
+          <li key={type}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span
+                  className={`inline-flex items-center gap-1.5 whitespace-nowrap text-sm ${
+                    present ? "text-green-700" : "text-muted-foreground"
+                  }`}
+                >
+                  {present ? (
+                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  ) : (
+                    <Circle className="h-4 w-4" />
+                  )}
+                  {label}
+                  {count > 1 && (
+                    <span className="text-xs text-muted-foreground">
+                      ({count})
+                    </span>
+                  )}
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>
+                {present
+                  ? `${title} sudah diunggah (${count} file)`
+                  : `${title} belum diunggah`}
+              </TooltipContent>
+            </Tooltip>
+          </li>
+        );
+      })}
+    </ul>
+  );
+};
 
 const IconAction = ({
   tip,
@@ -242,12 +293,8 @@ const OrdersTable = ({
               </span>
             )}
           </TableCell>
-          <TableCell className="max-w-[200px] truncate">
-            {order.state === "cancelled" && order.cancel_reason
-              ? `Dibatalkan: ${order.cancel_reason}`
-              : order.notes
-                ? stripHtml(order.notes)
-                : "-"}
+          <TableCell>
+            <DocumentChecklist order={order} />
           </TableCell>
           <TableCell>
             <div className="flex items-center justify-center gap-1">
@@ -358,7 +405,7 @@ const OrdersTable = ({
                 <TableHead>Kapal</TableHead>
                 <TableHead>Produk</TableHead>
                 <TableHead>Qty</TableHead>
-                <TableHead>Catatan</TableHead>
+                <TableHead>Dokumen</TableHead>
                 <TableHead className="text-center">Aksi</TableHead>
               </TableRow>
             </TableHeader>
