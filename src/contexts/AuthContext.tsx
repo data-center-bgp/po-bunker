@@ -24,6 +24,8 @@ export interface AuthContextType {
   loading: boolean;
   /** admin and staff can create/edit; viewers are read-only. */
   canWrite: boolean;
+  /** Admins manage users and master data. */
+  isAdmin: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
 }
@@ -40,6 +42,7 @@ const defaultAuthContext: AuthContextType = {
   isAuthenticated: false,
   loading: true,
   canWrite: false,
+  isAdmin: false,
   login: notReady,
   logout: notReady,
 };
@@ -146,6 +149,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         isAuthenticated: !!user,
         loading,
         canWrite: user?.role === "admin" || user?.role === "staff",
+        isAdmin: user?.role === "admin",
         login,
         logout,
       }}

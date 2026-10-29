@@ -25,6 +25,14 @@ const KNOWN_MESSAGES: [RegExp, (m: RegExpMatchArray) => string][] = [
   [/^The vessel API answered with HTTP (\d+)/, (m) => `API kapal menjawab dengan HTTP ${m[1]}.`],
   [/^(Unexpected response from the vessel API|The vessel API returned an unexpected page link)/, () => "API kapal memberikan respons yang tidak terduga."],
   [/^Could not reach the vessel API/, () => "API kapal tidak dapat dijangkau."],
+  [/^No CGA login exists for this email/, () => "Email ini belum memiliki akun login CGA. Buat akun login di Supabase terlebih dahulu."],
+  [/^This user already has access to PO Bunker/, () => "Pengguna ini sudah memiliki akses ke PO Bunker."],
+  [/^You cannot change your own role or deactivate yourself/, () => "Anda tidak dapat mengubah peran atau menonaktifkan akun Anda sendiri."],
+  [/^Cannot remove or demote the last active admin/, () => "Harus selalu ada minimal satu admin aktif."],
+  [/^A name is required/, () => "Nama wajib diisi."],
+  [/^An email is required/, () => "Email wajib diisi."],
+  [/^Unknown role/, () => "Peran tidak dikenal."],
+  [/^User .* not found/, () => "Pengguna tidak ditemukan."],
   [/^The ship list has no valid entries/, () => "Daftar kapal dari API tidak memiliki data yang valid."],
 ];
 

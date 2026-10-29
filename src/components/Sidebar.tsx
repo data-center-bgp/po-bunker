@@ -25,6 +25,7 @@ import {
   MapPin,
   Building2,
   Building,
+  Users,
 } from "lucide-react";
 
 export type TabType =
@@ -33,7 +34,8 @@ export type TabType =
   | "vessels"
   | "regions"
   | "partners"
-  | "companies";
+  | "companies"
+  | "users";
 
 interface Tab {
   id: TabType;
@@ -80,14 +82,24 @@ const TABS: Tab[] = [
     name: "Perusahaan",
     icon: <Building className="h-5 w-5" />,
   },
+  {
+    id: "users",
+    name: "Pengguna",
+    icon: <Users className="h-5 w-5" />,
+  },
 ];
 
-const NAV_SECTIONS: { label: string; tabIds: TabType[] }[] = [
+const NAV_SECTIONS: {
+  label: string;
+  tabIds: TabType[];
+  adminOnly?: boolean;
+}[] = [
   { label: "Umum", tabIds: ["overview", "orders"] },
   {
     label: "Data Master",
     tabIds: ["vessels", "regions", "partners", "companies"],
   },
+  { label: "Administrasi", tabIds: ["users"], adminOnly: true },
 ];
 
 const Sidebar = ({
@@ -97,7 +109,8 @@ const Sidebar = ({
   onTabChange,
   onLogout,
 }: SidebarProps) => {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
+  const sections = NAV_SECTIONS.filter((s) => !s.adminOnly || isAdmin);
 
   const getInitials = (email: string) => {
     return email.charAt(0).toUpperCase();
@@ -184,7 +197,7 @@ const Sidebar = ({
 
         {/* Navigation */}
         <nav className="flex-1 space-y-4 overflow-y-auto p-3">
-          {NAV_SECTIONS.map((section, index) => (
+          {sections.map((section, index) => (
             <div key={section.label} className="space-y-1">
               {index > 0 && !isOpen && <Separator className="mb-3" />}
               {isOpen && (

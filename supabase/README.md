@@ -10,7 +10,8 @@ app's users.
 - Apply migrations by pasting them into **Studio > SQL Editor**, in order.
   Never `supabase db push` or `migration repair` against CGA: its migration
   history belongs to ~140 other apps.
-- No triggers on `auth.users`. Profiles are added by hand (see 0003).
+- No triggers on `auth.users`. Profiles are added by an admin: from the **Pengguna** page (migration 0008,
+  by the email of an existing login) or by hand (see 0003).
 - Passwords are shared across every CGA app; there is no reset-password flow
   in this app on purpose.
 - The database is live and shared. Label any test rows you create and delete
@@ -35,6 +36,21 @@ app's users.
 3. Create the first admin: create (or reuse) a user in Authentication > Users,
    then run the commented `insert into po_bunker.profiles ...` in 0003.
 4. Import master data (below).
+
+## User management (migration 0008)
+
+Admins manage who may use PO Bunker from the **Pengguna** page. It never creates logins or touches passwords (the
+logins are shared with other CGA apps): a new person first gets a login in Supabase Authentication, then an admin
+adds them by email.
+
+| RPC (admin only)                       | Does                                                             |
+| -------------------------------------- | ---------------------------------------------------------------- |
+| `admin_list_users()`                   | profiles plus `last_sign_in_at` from `auth.users`                |
+| `add_user_by_email(p_email, p_name, p_role)` | gives an existing login access; errors if no login or already added |
+| `update_user(p_id, p_name, p_role, p_active)` | rename, change role, deactivate; not on yourself; keeps one active admin |
+
+`po_bunker.profiles` can no longer be written directly by clients (insert/update/delete revoked); Studio and the SQL
+editor are unaffected.
 
 ## Roles
 

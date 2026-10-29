@@ -306,6 +306,19 @@ They print under the order lines.
 
 ---
 
+### 5.10 Users (admins only)
+
+The **Pengguna** page (sidebar, section *Administrasi*) lists everyone with access to PO Bunker: name, email, role,
+status and last sign-in. Admins can:
+
+- **Tambah Pengguna:** give an existing CGA login access by its email, with a role (Admin, Staf or Viewer). The name is
+  optional and defaults to the one on the account. A person without a login must first be created in Supabase
+  (Authentication > Users); logins are shared with other CGA apps, so passwords are not managed here.
+- **Ubah:** change the name or role, or switch access off (the user can no longer open PO Bunker, their PO history stays).
+- You cannot change your own role or deactivate yourself, and there must always be one active admin.
+
+---
+
 ## 6. Order States & Workflow
 
 ```

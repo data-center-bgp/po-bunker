@@ -18,6 +18,11 @@ export const ORDER_STATE_LABELS: Record<OrderState, string> = {
 export type OrderType = "bunker_fuel" | "bunker_water" | "logistic";
 export type Priority = "low" | "medium" | "high";
 export type UserRole = "admin" | "staff" | "viewer";
+export const USER_ROLE_LABELS: Record<UserRole, string> = {
+  admin: "Admin",
+  staff: "Staf",
+  viewer: "Viewer",
+};
 export type ApprovalLevel = "first" | "second" | "third";
 export type LineStatus = "onprogress" | "hold" | "cancel" | "close";
 export type OptionOrder = "quotation" | "invoice";
@@ -51,6 +56,17 @@ export interface Profile {
   active: boolean;
   signature_path: string | null;
   approval_levels: ApprovalLevel[];
+}
+
+/** A person with access to PO Bunker (po_bunker.profiles + last sign-in). */
+export interface AppUser {
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  active: boolean;
+  created_at: string;
+  last_sign_in_at: string | null;
 }
 
 export interface Region {

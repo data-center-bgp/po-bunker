@@ -6,6 +6,7 @@ import VesselApiGate from "@/components/api/VesselApiGate";
 import RegionPage from "@/components/api/RegionPage";
 import PartnerPage from "@/components/api/PartnerPage";
 import CompanyPage from "@/components/api/CompanyPage";
+import UserPage from "@/components/users/UserPage";
 import OverviewPage from "@/components/overview/OverviewPage";
 import { cn } from "@/lib/utils";
 import {
@@ -15,11 +16,12 @@ import {
   MapPin,
   Building2,
   Building,
+  Users,
   type LucideIcon,
 } from "lucide-react";
 
 const ACTIVE_TAB_STORAGE_KEY = "po-bunker:active-tab";
-const VALID_TABS: TabType[] = ["overview", "orders", "vessels", "regions", "partners", "companies"];
+const VALID_TABS: TabType[] = ["overview", "orders", "vessels", "regions", "partners", "companies", "users"];
 
 const PAGE_META: Record<
   TabType,
@@ -54,6 +56,11 @@ const PAGE_META: Record<
     title: "Perusahaan",
     description: "Kelola perusahaan internal yang menerbitkan PO.",
     icon: Building,
+  },
+  users: {
+    title: "Pengguna",
+    description: "Atur akses dan peran pengguna PO Bunker.",
+    icon: Users,
   },
 };
 
@@ -105,6 +112,9 @@ const Dashboard = () => {
 
       case "companies":
         return <CompanyPage />;
+
+      case "users":
+        return <UserPage />;
 
       default:
         return null;
