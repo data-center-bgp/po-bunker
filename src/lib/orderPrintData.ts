@@ -35,7 +35,10 @@ export interface PrintLine {
 }
 
 export interface PrintData {
-  /** Company letterhead printed at the top of the form. */
+  /**
+   * Header image printed at the top of the form: the issuing company's own
+   * letterhead (uploaded on the company), or the default letterhead.
+   */
   letterhead: PrintImage | null;
   poNumber: string;
   poDate: string;
@@ -135,8 +138,12 @@ export const buildPrintData = async (
   order: PurchaseOrder,
   loadImage: ImageLoader = storageService.getDataUrl,
 ): Promise<PrintData> => {
+  const companyLetterhead = order.company?.logo_path
+    ? await loadImage(order.company.logo_path)
+    : null;
+
   const [letterhead, ...signatures] = await Promise.all([
-    fetchDataUrl("/letterhead.jpg").then(toImage),
+    toImage(companyLetterhead ?? (await fetchDataUrl("/letterhead.jpg"))),
     ...APPROVAL_LEVELS.map(async ({ level }) => {
       const path = order[`${level}_approved_signature_path`];
       return toImage(path ? await loadImage(path) : null);

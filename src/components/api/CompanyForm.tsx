@@ -456,16 +456,17 @@ const CompanyForm = ({
               {/* Logo */}
               <div className="space-y-2">
                 <Label htmlFor="company-logo">
-                  Logo{" "}
+                  Kop surat / logo{" "}
                   <span className="font-normal text-muted-foreground">
-                    (dicetak pada PO, PNG atau JPG di bawah 1 MB)
+                    (gambar header yang dicetak di atas PO, PNG atau JPG di
+                    bawah 1 MB; jika kosong dipakai kop surat standar)
                   </span>
                 </Label>
                 {currentLogoUrl && !logoFile && (
                   <img
                     src={currentLogoUrl}
-                    alt="Logo saat ini"
-                    className="h-12 object-contain"
+                    alt="Kop surat saat ini"
+                    className="max-h-20 max-w-full object-contain"
                   />
                 )}
                 <input
