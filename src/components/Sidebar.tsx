@@ -26,6 +26,9 @@ import {
   Building2,
   Building,
   Users,
+  Package,
+  Ruler,
+  WalletCards,
 } from "lucide-react";
 
 export type TabType =
@@ -35,6 +38,9 @@ export type TabType =
   | "regions"
   | "partners"
   | "companies"
+  | "products"
+  | "units"
+  | "codeBudgets"
   | "users";
 
 interface Tab {
@@ -83,6 +89,21 @@ const TABS: Tab[] = [
     icon: <Building className="h-5 w-5" />,
   },
   {
+    id: "products",
+    name: "Produk",
+    icon: <Package className="h-5 w-5" />,
+  },
+  {
+    id: "units",
+    name: "Satuan",
+    icon: <Ruler className="h-5 w-5" />,
+  },
+  {
+    id: "codeBudgets",
+    name: "Kode Budget",
+    icon: <WalletCards className="h-5 w-5" />,
+  },
+  {
     id: "users",
     name: "Pengguna",
     icon: <Users className="h-5 w-5" />,
@@ -97,7 +118,15 @@ const NAV_SECTIONS: {
   { label: "Umum", tabIds: ["overview", "orders"] },
   {
     label: "Data Master",
-    tabIds: ["vessels", "regions", "partners", "companies"],
+    tabIds: [
+      "vessels",
+      "regions",
+      "partners",
+      "companies",
+      "products",
+      "units",
+      "codeBudgets",
+    ],
   },
   { label: "Administrasi", tabIds: ["users"], adminOnly: true },
 ];

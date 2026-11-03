@@ -1,7 +1,7 @@
 // Edge Function: pull the vessel list from the company SMS API into
 // po_bunker.vessels. The API token lives in a Supabase secret
 // (VESSEL_API_TOKEN, falling back to API_VESSEL_PMS_BAROKAH) and never reaches
-// the browser. Only active PO Bunker admins may run it.
+// the browser. Active PO Bunker admins and staff may run it.
 //
 // Deploy (CGA is shared; never `db push`):
 //   supabase functions deploy po-bunker-sync-vessels --no-verify-jwt --use-api \
@@ -57,16 +57,16 @@ Deno.serve(async (req) => {
     return json({ error: "The function is not configured" }, 500);
   }
 
-  // 1. Who is calling? Only active PO Bunker admins.
+  // 1. Who is calling? Active PO Bunker admins and staff (not viewers).
   const userClient = createClient(url, anonKey, {
     global: { headers: { Authorization: authorization } },
     db: { schema: "po_bunker" },
     auth: { persistSession: false },
   });
-  const { data: isAdmin, error: adminError } = await userClient.rpc("is_admin");
-  if (adminError) return json({ error: "Not authenticated" }, 401);
-  if (isAdmin !== true) {
-    return json({ error: "Only PO Bunker admins can sync vessels" }, 403);
+  const { data: canWrite, error: roleError } = await userClient.rpc("can_write");
+  if (roleError) return json({ error: "Not authenticated" }, 401);
+  if (canWrite !== true) {
+    return json({ error: "Only PO Bunker admins and staff can sync vessels" }, 403);
   }
 
   // 2. Fetch the ships.

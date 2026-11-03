@@ -7,6 +7,9 @@ import RegionPage from "@/components/api/RegionPage";
 import PartnerPage from "@/components/api/PartnerPage";
 import CompanyPage from "@/components/api/CompanyPage";
 import UserPage from "@/components/users/UserPage";
+import ProductPage from "@/components/catalog/ProductPage";
+import UnitPage from "@/components/catalog/UnitPage";
+import CodeBudgetPage from "@/components/catalog/CodeBudgetPage";
 import OverviewPage from "@/components/overview/OverviewPage";
 import { cn } from "@/lib/utils";
 import {
@@ -17,11 +20,14 @@ import {
   Building2,
   Building,
   Users,
+  Package,
+  Ruler,
+  WalletCards,
   type LucideIcon,
 } from "lucide-react";
 
 const ACTIVE_TAB_STORAGE_KEY = "po-bunker:active-tab";
-const VALID_TABS: TabType[] = ["overview", "orders", "vessels", "regions", "partners", "companies", "users"];
+const VALID_TABS: TabType[] = ["overview", "orders", "vessels", "regions", "partners", "companies", "products", "units", "codeBudgets", "users"];
 
 const PAGE_META: Record<
   TabType,
@@ -56,6 +62,21 @@ const PAGE_META: Record<
     title: "Perusahaan",
     description: "Kelola perusahaan internal yang menerbitkan PO.",
     icon: Building,
+  },
+  products: {
+    title: "Produk",
+    description: "Kelola produk yang dipesan pada PO.",
+    icon: Package,
+  },
+  units: {
+    title: "Satuan",
+    description: "Kelola satuan ukuran produk (Liter, Ton, dan lainnya).",
+    icon: Ruler,
+  },
+  codeBudgets: {
+    title: "Kode Budget",
+    description: "Kelola kode anggaran yang dipakai pada baris PO.",
+    icon: WalletCards,
   },
   users: {
     title: "Pengguna",
@@ -112,6 +133,15 @@ const Dashboard = () => {
 
       case "companies":
         return <CompanyPage />;
+
+      case "products":
+        return <ProductPage />;
+
+      case "units":
+        return <UnitPage />;
+
+      case "codeBudgets":
+        return <CodeBudgetPage />;
 
       case "users":
         return <UserPage />;

@@ -29,8 +29,7 @@ import {
 const PAGE_SIZE = 20;
 
 const VesselApiGate = () => {
-  const { user } = useAuth();
-  const isAdmin = user?.role === "admin";
+  const { canWrite } = useAuth();
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<VesselSyncResult | null>(null);
   const [vessels, setVessels] = useState<Vessel[]>([]);
@@ -117,7 +116,7 @@ const VesselApiGate = () => {
               })}.`}
           </p>
         </div>
-        {isAdmin && (
+        {canWrite && (
           <Button onClick={handleSync} disabled={syncing}>
             {syncing ? (
               <Loader2 className="h-4 w-4 animate-spin" />

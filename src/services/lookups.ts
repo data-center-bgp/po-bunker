@@ -19,7 +19,7 @@ export const lookupsService = {
       "Gagal memuat data kapal",
     ),
 
-  // Runs the po-bunker-sync-vessels Edge Function (admins only). The SMS API
+  // Runs the po-bunker-sync-vessels Edge Function (admins and staff). The SMS API
   // token stays in a Supabase secret; the browser never sees it.
   syncVesselsFromSms: async (): Promise<VesselSyncResult> => {
     const { data, error } = await supabase.functions.invoke(

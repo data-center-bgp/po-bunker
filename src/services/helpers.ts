@@ -20,7 +20,7 @@ const KNOWN_MESSAGES: [RegExp, (m: RegExpMatchArray) => string][] = [
   [/^Only submitted orders can be completed/, () => "Hanya PO berstatus Diajukan yang dapat diselesaikan."],
   [/^Only submitted orders can be cancelled/, () => "Hanya PO berstatus Diajukan yang dapat dibatalkan."],
   [/^A cancellation reason is required/, () => "Alasan pembatalan wajib diisi."],
-  [/^Only PO Bunker admins can sync vessels/, () => "Hanya admin PO Bunker yang dapat menyinkronkan kapal."],
+  [/^Only PO Bunker admins( and staff)? can sync vessels/, () => "Hanya admin dan staf PO Bunker yang dapat menyinkronkan kapal."],
   [/^The vessel API token is not configured|^The function is not configured/, () => "Sinkronisasi kapal belum dikonfigurasi di server."],
   [/^The vessel API answered with HTTP (\d+)/, (m) => `API kapal menjawab dengan HTTP ${m[1]}.`],
   [/^(Unexpected response from the vessel API|The vessel API returned an unexpected page link)/, () => "API kapal memberikan respons yang tidak terduga."],

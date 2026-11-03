@@ -54,11 +54,14 @@ editor are unaffected.
 
 ## Roles
 
-| Role   | Orders          | Companies / partners / regions | Vessels, products, code budgets, profiles |
-| ------ | --------------- | ------------------------------ | ----------------------------------------- |
-| admin  | create/edit/... | create/edit                    | full                                      |
-| staff  | create/edit/... | create/edit                    | read                                      |
-| viewer | read            | read                           | read                                      |
+| Role   | Orders          | Companies / partners / regions | Products, units, code budgets (0010) | Categories, business units, vessel types, profiles |
+| ------ | --------------- | ------------------------------ | ------------------------------------ | -------------------------------------------------- |
+| admin  | create/edit/... | create/edit                    | create/edit                          | full (profiles via the Pengguna functions)         |
+| staff  | create/edit/... | create/edit                    | create/edit                          | read                                               |
+| viewer | read            | read                           | read                                 | read                                               |
+
+Products, units and code budgets: insert/update need `can_write()` (admin or staff), delete stays admin-only
+(and is blocked by foreign keys while a row is in use). Vessels are written only by the sync (service role).
 
 Users without an active row in `po_bunker.profiles` get nothing, even though
 they can sign in to Supabase Auth.
@@ -96,10 +99,10 @@ Totals are recomputed in the database (migration 0005): `untaxed = active lines 
 
 ## Vessels: sync from the company SMS API (migration 0006)
 
-Vessels come from `https://sms.barokahmarineconsulting.com/api/csbd/ships`. An admin presses **Sync from SMS** on the
+Vessels come from `https://sms.barokahmarineconsulting.com/api/csbd/ships`. An admin or staff user presses **Sync from SMS** on the
 Vessels page; that calls the Edge Function `po-bunker-sync-vessels`, which
 
-1. checks the caller is an active PO Bunker admin,
+1. checks the caller is an active PO Bunker admin or staff user (`can_write()`),
 2. reads the API token from the project secret `VESSEL_API_TOKEN` (fallback `API_VESSEL_PMS_BAROKAH`) and fetches the ships,
 3. hands them to `po_bunker.sync_vessels()` (service_role only), which upserts by the API id (`vessels.external_id`),
    creates/matches vessel types by code, and deactivates (never deletes) vessels that disappeared from the API.

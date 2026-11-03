@@ -232,14 +232,52 @@ export interface Product {
   uom_id: number;
   code_budget_id: number | null;
   standard_price: number;
+  list_price: number;
+  merk: string | null;
+  model: string | null;
+  serial_number: string | null;
+  specs: string | null;
+  description: string | null;
   active: boolean;
   category: Ref | null;
   uom: Ref | null;
   code_budget: Ref | null;
 }
 
+export interface ProductInput {
+  name: string;
+  default_code: string | null;
+  category_id: number;
+  uom_id: number;
+  code_budget_id: number | null;
+  standard_price: number;
+  list_price: number;
+  merk: string | null;
+  model: string | null;
+  serial_number: string | null;
+  specs: string | null;
+  description: string | null;
+  active: boolean;
+}
+
+export interface ProductCategory {
+  id: number;
+  name: string;
+}
+
+export interface Uom {
+  id: number;
+  name: string;
+}
+
 export interface CodeBudget {
   id: number;
+  name: string;
+  code: string | null;
+  active: boolean;
+}
+
+export interface CodeBudgetInput {
   name: string;
   code: string | null;
   active: boolean;

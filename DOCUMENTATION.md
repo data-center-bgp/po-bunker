@@ -155,8 +155,8 @@ On success you are redirected to the **Dashboard**. Supabase keeps the session a
 
 | Role   | Can do                                                        |
 | ------ | ------------------------------------------------------------- |
-| admin  | Everything, including users and master data such as vessels   |
-| staff  | Create/edit orders, companies, partners and regions           |
+| admin  | Everything, including users                                   |
+| staff  | Create/complete/cancel orders; manage companies, partners, regions, products, units and code budgets; sync vessels |
 | viewer | Read-only: write buttons are hidden                           |
 
 > If login fails, an error message is displayed below the email field.
@@ -405,7 +405,7 @@ bucket), allowed only while the order is submitted. Orders cannot be deleted fro
 
 ### Reference data
 
-Companies, partners and regions can be created and edited from the app. **Vessels** are synced from the company SMS vessel API: an admin presses *Sync from SMS* on the Vessels page (an Edge Function holds the API token; vessels that disappear from the API are deactivated, never deleted; inactive vessels can no longer be picked on new orders). Products, code budgets, units of measure, categories and business units are read-only in the app and are managed in Supabase (admin only; see `supabase/README.md` for CSV import).
+Companies, partners and regions can be created and edited from the app. **Vessels** are synced from the company SMS vessel API: an admin or staff user presses *Sync from SMS* on the Vessels page (an Edge Function holds the API token; vessels that disappear from the API are deactivated, never deleted; inactive vessels can no longer be picked on new orders). **Products, units of measure and code budgets** have their own screens (*Produk*, *Satuan*, *Kode Budget*, section Data Master) where admins and staff can add and edit them (viewers only read). Products and code budgets are deactivated instead of deleted; nothing is deleted from the app. Categories and business units are still managed in Supabase (admin only; see `supabase/README.md` for CSV import).
 
 ### Export
 
