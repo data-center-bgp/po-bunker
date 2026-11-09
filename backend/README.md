@@ -83,6 +83,33 @@ decided from the file's bytes, never from its name or the client's Content-Type.
 returns a link valid for one hour; `GET /files/<path>?exp=...&sig=...` serves the file without a login, because `<img>`
 and PDF viewers cannot send an Authorization header.
 
+## Purchase orders (phase 3)
+
+| Endpoint | Does |
+| --- | --- |
+| `GET /orders?page=&limit=` | one page, newest first: `{ "orders": [...], "total_count": n }`, each order with its lines, documents and remarks |
+| `GET /orders/:id` | one order |
+| `POST /orders` | submit a new order (header fields at the top level plus `lines`); answers 201 with the order |
+| `POST /orders/:id/complete` | `{ "lines": [{ "line_id", "actual_qty" }] }`: needs a DO file and a quantity for every line |
+| `POST /orders/:id/cancel` | `{ "reason": "..." }` (at least 3 characters) |
+| `POST /orders/:id/documents` | multipart `file`: a Delivery Order (PDF/PNG/JPG, 5 MB), while the order is submitted |
+| `DELETE /orders/:id/documents/:docId` | while the order is submitted |
+| `POST /orders/:id/remarks`, `DELETE /orders/:id/remarks/:remarkId` | red (`merah`) or blue (`biru`) notes, in any state |
+| `GET /dashboard/orders` | every order with only what the dashboard totals need |
+
+Rules (ported from the Supabase functions; each operation is one transaction):
+
+- **Numbering:** bunker `NNN AC/<company General Code>-OPS/BBM|AIR/<ROMAN MONTH>-<YEAR>`, counted per order type and per
+  month across companies, in Makassar time (UTC+8); logistic `PO/<YEAR>/NNNN`. The counter row is incremented inside the
+  order's transaction, so a refused order burns no number and parallel orders never share one. A cancelled order's number is
+  not reused. A bunker order needs the company's General Code (`company_code_missing`).
+- **Totals:** untaxed = lines total - discount (the discount may not exceed the lines total), tax = untaxed x VAT% / 100
+  rounded to cents, total = untaxed + tax. Exact decimals (`shopspring/decimal`); a test compares 3000 random cases with
+  Postgres `numeric`.
+- **Lifecycle:** `submitted` (locked) -> `completed` (final) or `cancelled` (final). Only submitted orders can be completed,
+  cancelled or have documents changed (`409 order_not_submitted`); completing without a DO is `409 do_required`.
+- Money and quantities are JSON numbers in responses; send numbers or numeric strings.
+
 ## Deploy
 
 `deploy/docker-compose.yml` runs Postgres and this API; Nginx proxies `/api/` to `127.0.0.1:8080`

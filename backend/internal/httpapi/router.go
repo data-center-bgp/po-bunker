@@ -13,6 +13,7 @@ import (
 	"github.com/data-center-bgp/po-bunker/backend/internal/catalog"
 	"github.com/data-center-bgp/po-bunker/backend/internal/config"
 	"github.com/data-center-bgp/po-bunker/backend/internal/files"
+	"github.com/data-center-bgp/po-bunker/backend/internal/orders"
 	"github.com/data-center-bgp/po-bunker/backend/internal/users"
 )
 
@@ -28,6 +29,8 @@ type Deps struct {
 	Catalog *catalog.Store
 	Users   *users.Store
 	Files   *files.Store
+	Orders  *orders.Service
+	OrderDB *orders.Store
 }
 
 // NewRouter builds the Gin engine. It uses gin.New(), not gin.Default(), so
@@ -60,6 +63,9 @@ func NewRouter(cfg config.Config, deps Deps, log *slog.Logger) (*gin.Engine, err
 		if deps.Catalog != nil && deps.Users != nil && deps.Files != nil {
 			registerCatalog(v1, deps.Auth, deps.Catalog, deps.Users, deps.Files)
 			registerFiles(v1, deps.Auth, deps.Files)
+		}
+		if deps.Orders != nil && deps.OrderDB != nil {
+			registerOrders(v1, deps.Auth, deps.OrderDB, deps.Orders)
 		}
 	}
 

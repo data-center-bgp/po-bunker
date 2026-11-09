@@ -18,6 +18,7 @@ import (
 	"github.com/data-center-bgp/po-bunker/backend/internal/catalog"
 	"github.com/data-center-bgp/po-bunker/backend/internal/config"
 	"github.com/data-center-bgp/po-bunker/backend/internal/files"
+	"github.com/data-center-bgp/po-bunker/backend/internal/orders"
 	"github.com/data-center-bgp/po-bunker/backend/internal/testdb"
 	"github.com/data-center-bgp/po-bunker/backend/internal/users"
 )
@@ -48,7 +49,8 @@ func newEnv(t *testing.T, accessTTL time.Duration) *env {
 	}
 	r, err := NewRouter(
 		config.Config{Env: "development", CookieSecure: true, TrustedProxies: []string{"127.0.0.1"}},
-		Deps{DB: pool, Auth: svc, Catalog: catalog.NewStore(pool), Users: us, Files: fileStore},
+		Deps{DB: pool, Auth: svc, Catalog: catalog.NewStore(pool), Users: us, Files: fileStore,
+			Orders: orders.NewService(pool, orders.NewStore(pool), fileStore), OrderDB: orders.NewStore(pool)},
 		slog.New(slog.NewTextHandler(io.Discard, nil)),
 	)
 	if err != nil {

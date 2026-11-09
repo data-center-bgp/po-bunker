@@ -15,8 +15,10 @@ import (
 )
 
 // pathID reads a positive integer :id; anything else is a 404 (no such record).
-func pathID(c *gin.Context) (int64, bool) {
-	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+func pathID(c *gin.Context) (int64, bool) { return pathParamID(c, "id") }
+
+func pathParamID(c *gin.Context, name string) (int64, bool) {
+	id, err := strconv.ParseInt(c.Param(name), 10, 64)
 	if err != nil || id <= 0 {
 		Fail(c, ErrNotFound)
 		return 0, false

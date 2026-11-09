@@ -24,6 +24,7 @@ import (
 	"github.com/data-center-bgp/po-bunker/backend/internal/db"
 	"github.com/data-center-bgp/po-bunker/backend/internal/files"
 	"github.com/data-center-bgp/po-bunker/backend/internal/httpapi"
+	"github.com/data-center-bgp/po-bunker/backend/internal/orders"
 	"github.com/data-center-bgp/po-bunker/backend/internal/users"
 )
 
@@ -92,12 +93,16 @@ func run() error {
 		return fmt.Errorf("file storage: %w", err)
 	}
 
+	orderStore := orders.NewStore(pool)
+
 	router, err := httpapi.NewRouter(cfg, httpapi.Deps{
 		DB:      pool,
 		Auth:    authService,
 		Catalog: catalog.NewStore(pool),
 		Users:   userStore,
 		Files:   fileStore,
+		Orders:  orders.NewService(pool, orderStore, fileStore),
+		OrderDB: orderStore,
 	}, log)
 	if err != nil {
 		return fmt.Errorf("router: %w", err)

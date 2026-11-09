@@ -7,6 +7,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/data-center-bgp/po-bunker/backend/internal/catalog"
+	"github.com/data-center-bgp/po-bunker/backend/internal/orders"
 )
 
 // asAPIError converts the errors the data layer produces (not found,
@@ -20,6 +21,19 @@ func asAPIError(err error) error {
 		return e
 	}
 	if errors.Is(err, catalog.ErrNotFound) {
+		return ErrNotFound
+	}
+	var re *orders.RuleError
+	if errors.As(err, &re) {
+		status := http.StatusUnprocessableEntity
+		if re.Conflict {
+			status = http.StatusConflict
+		}
+		e := NewError(status, re.Code, re.Message)
+		e.Field = re.Field
+		return e
+	}
+	if errors.Is(err, orders.ErrNotFound) {
 		return ErrNotFound
 	}
 	var pg *pgconn.PgError
