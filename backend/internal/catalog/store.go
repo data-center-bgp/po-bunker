@@ -315,21 +315,45 @@ func (s *Store) UpdateRegion(ctx context.Context, id int64, in RegionInput) (*Re
 
 // ---- vessels ---------------------------------------------------------------
 
+const vesselSelect = `
+SELECT v.id, v.external_id, v.name, v.fleet_name, v.operation_head_name, v.headcount_code,
+       v.headcount_name, v.synced_at, v.code, v.type_id, v.gross_tonage::float8 AS gross_tonage,
+       v.call_sign, v.imo_no, v.mmsi_no, v.registered_year, v.registered_place, v.flag, v.active,
+       CASE WHEN t.id IS NULL THEN NULL ELSE jsonb_build_object('id', t.id, 'name', t.name) END AS type,
+       CASE WHEN o.id IS NULL THEN NULL ELSE jsonb_build_object('id', o.id, 'name', o.name) END AS operator,
+       CASE WHEN w.id IS NULL THEN NULL ELSE jsonb_build_object('id', w.id, 'name', w.name) END AS owner,
+       CASE WHEN b.id IS NULL THEN NULL ELSE jsonb_build_object('id', b.id, 'name', b.name) END AS business_unit
+FROM vessels v
+LEFT JOIN vessel_types t ON t.id = v.type_id
+LEFT JOIN companies o ON o.id = v.operator_id
+LEFT JOIN companies w ON w.id = v.owner_id
+LEFT JOIN business_units b ON b.id = v.business_unit_id`
+
 func (s *Store) ListVessels(ctx context.Context) ([]Vessel, error) {
-	return list[Vessel](ctx, s.pool, `
-		SELECT v.id, v.external_id, v.name, v.fleet_name, v.operation_head_name, v.headcount_code,
-		       v.headcount_name, v.synced_at, v.code, v.type_id, v.gross_tonage::float8 AS gross_tonage,
-		       v.call_sign, v.imo_no, v.mmsi_no, v.registered_year, v.registered_place, v.flag, v.active,
-		       CASE WHEN t.id IS NULL THEN NULL ELSE jsonb_build_object('id', t.id, 'name', t.name) END AS type,
-		       CASE WHEN o.id IS NULL THEN NULL ELSE jsonb_build_object('id', o.id, 'name', o.name) END AS operator,
-		       CASE WHEN w.id IS NULL THEN NULL ELSE jsonb_build_object('id', w.id, 'name', w.name) END AS owner,
-		       CASE WHEN b.id IS NULL THEN NULL ELSE jsonb_build_object('id', b.id, 'name', b.name) END AS business_unit
-		FROM vessels v
-		LEFT JOIN vessel_types t ON t.id = v.type_id
-		LEFT JOIN companies o ON o.id = v.operator_id
-		LEFT JOIN companies w ON w.id = v.owner_id
-		LEFT JOIN business_units b ON b.id = v.business_unit_id
-		ORDER BY v.name, v.id`)
+	return list[Vessel](ctx, s.pool, vesselSelect+` ORDER BY v.name, v.id`)
+}
+
+func (s *Store) GetVessel(ctx context.Context, id int64) (*Vessel, error) {
+	return get[Vessel](ctx, s.pool, vesselSelect+` WHERE v.id = $1`, id)
+}
+
+type VesselCodeInput struct {
+	Code *string `json:"code"`
+}
+
+const maxVesselCodeLength = 30
+
+// SetVesselCode sets the short code printed in the Vessel column of the PO
+// (blank clears it). Everything else about a vessel comes from the SMS sync.
+func (s *Store) SetVesselCode(ctx context.Context, id int64, in VesselCodeInput) (*Vessel, error) {
+	code := clean(in.Code)
+	if code != nil && len([]rune(*code)) > maxVesselCodeLength {
+		return nil, invalid("code", "is too long (30 characters at most)")
+	}
+	if err := affected(s.pool.Exec(ctx, `UPDATE vessels SET code = $2 WHERE id = $1`, id, code)); err != nil {
+		return nil, err
+	}
+	return s.GetVessel(ctx, id)
 }
 
 // ---- products --------------------------------------------------------------

@@ -6,8 +6,12 @@ import (
 
 	"github.com/jackc/pgx/v5/pgconn"
 
+	"github.com/data-center-bgp/po-bunker/backend/internal/accounts"
+	"github.com/data-center-bgp/po-bunker/backend/internal/auth"
 	"github.com/data-center-bgp/po-bunker/backend/internal/catalog"
 	"github.com/data-center-bgp/po-bunker/backend/internal/orders"
+	"github.com/data-center-bgp/po-bunker/backend/internal/users"
+	"github.com/data-center-bgp/po-bunker/backend/internal/vessels"
 )
 
 // asAPIError converts the errors the data layer produces (not found,
@@ -22,6 +26,38 @@ func asAPIError(err error) error {
 	}
 	if errors.Is(err, catalog.ErrNotFound) {
 		return ErrNotFound
+	}
+	var ie *accounts.InvalidError
+	if errors.As(err, &ie) {
+		e := NewError(http.StatusUnprocessableEntity, "validation_failed", ie.Field+" "+ie.Message)
+		e.Field = ie.Field
+		return e
+	}
+	var up *vessels.UpstreamError
+	if errors.As(err, &up) {
+		status := http.StatusBadGateway
+		if up.NotConfigured {
+			status = http.StatusInternalServerError
+		}
+		return NewError(status, up.Code, up.Message)
+	}
+	switch {
+	case errors.Is(err, accounts.ErrCannotChangeSelf):
+		return NewError(http.StatusConflict, "cannot_change_self", "You cannot change your own role or deactivate yourself")
+	case errors.Is(err, accounts.ErrLastAdmin):
+		return NewError(http.StatusConflict, "last_admin", "There must always be one active admin")
+	case errors.Is(err, users.ErrEmailTaken):
+		return NewError(http.StatusConflict, "email_taken", "This email already has an account")
+	case errors.Is(err, users.ErrNotFound):
+		return ErrNotFound
+	case errors.Is(err, auth.ErrPasswordTooShort), errors.Is(err, auth.ErrPasswordTooLong):
+		return NewError(http.StatusBadRequest, "weak_password", err.Error())
+	case errors.Is(err, vessels.ErrEmptyList):
+		return NewError(http.StatusUnprocessableEntity, "empty_ship_list", "The vessel API returned no ships, nothing was changed")
+	case errors.Is(err, vessels.ErrNoValidShips):
+		return NewError(http.StatusUnprocessableEntity, "no_valid_ships", "The vessel API returned no usable ships (each needs a numeric id and a name)")
+	case errors.Is(err, vessels.ErrSyncRunning):
+		return NewError(http.StatusConflict, "sync_in_progress", "A vessel sync is already running")
 	}
 	var re *orders.RuleError
 	if errors.As(err, &re) {

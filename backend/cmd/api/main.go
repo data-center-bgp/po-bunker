@@ -18,6 +18,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/data-center-bgp/po-bunker/backend/internal/accounts"
 	"github.com/data-center-bgp/po-bunker/backend/internal/auth"
 	"github.com/data-center-bgp/po-bunker/backend/internal/catalog"
 	"github.com/data-center-bgp/po-bunker/backend/internal/config"
@@ -26,6 +27,7 @@ import (
 	"github.com/data-center-bgp/po-bunker/backend/internal/httpapi"
 	"github.com/data-center-bgp/po-bunker/backend/internal/orders"
 	"github.com/data-center-bgp/po-bunker/backend/internal/users"
+	"github.com/data-center-bgp/po-bunker/backend/internal/vessels"
 )
 
 func main() {
@@ -96,13 +98,15 @@ func run() error {
 	orderStore := orders.NewStore(pool)
 
 	router, err := httpapi.NewRouter(cfg, httpapi.Deps{
-		DB:      pool,
-		Auth:    authService,
-		Catalog: catalog.NewStore(pool),
-		Users:   userStore,
-		Files:   fileStore,
-		Orders:  orders.NewService(pool, orderStore, fileStore),
-		OrderDB: orderStore,
+		DB:       pool,
+		Auth:     authService,
+		Catalog:  catalog.NewStore(pool),
+		Users:    userStore,
+		Files:    fileStore,
+		Orders:   orders.NewService(pool, orderStore, fileStore),
+		OrderDB:  orderStore,
+		Accounts: accounts.New(userStore, refreshStore, 0),
+		Vessels:  vessels.NewSyncer(pool, vessels.NewClient(cfg.VesselAPIURL, cfg.VesselAPIToken)),
 	}, log)
 	if err != nil {
 		return fmt.Errorf("router: %w", err)

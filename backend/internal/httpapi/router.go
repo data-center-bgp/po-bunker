@@ -9,12 +9,14 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/data-center-bgp/po-bunker/backend/internal/accounts"
 	"github.com/data-center-bgp/po-bunker/backend/internal/auth"
 	"github.com/data-center-bgp/po-bunker/backend/internal/catalog"
 	"github.com/data-center-bgp/po-bunker/backend/internal/config"
 	"github.com/data-center-bgp/po-bunker/backend/internal/files"
 	"github.com/data-center-bgp/po-bunker/backend/internal/orders"
 	"github.com/data-center-bgp/po-bunker/backend/internal/users"
+	"github.com/data-center-bgp/po-bunker/backend/internal/vessels"
 )
 
 // Pinger is what the health check needs from the database pool.
@@ -24,13 +26,15 @@ type Pinger interface {
 
 // Deps are the services the handlers use. It grows with each phase.
 type Deps struct {
-	DB      Pinger
-	Auth    *auth.Service
-	Catalog *catalog.Store
-	Users   *users.Store
-	Files   *files.Store
-	Orders  *orders.Service
-	OrderDB *orders.Store
+	DB       Pinger
+	Auth     *auth.Service
+	Catalog  *catalog.Store
+	Users    *users.Store
+	Files    *files.Store
+	Orders   *orders.Service
+	OrderDB  *orders.Store
+	Accounts *accounts.Manager
+	Vessels  *vessels.Syncer
 }
 
 // NewRouter builds the Gin engine. It uses gin.New(), not gin.Default(), so
@@ -63,6 +67,12 @@ func NewRouter(cfg config.Config, deps Deps, log *slog.Logger) (*gin.Engine, err
 		if deps.Catalog != nil && deps.Users != nil && deps.Files != nil {
 			registerCatalog(v1, deps.Auth, deps.Catalog, deps.Users, deps.Files)
 			registerFiles(v1, deps.Auth, deps.Files)
+		}
+		if deps.Accounts != nil {
+			registerUsers(v1, deps.Auth, deps.Accounts)
+		}
+		if deps.Vessels != nil && deps.Catalog != nil {
+			registerVesselAdmin(v1, deps.Auth, deps.Vessels, deps.Catalog)
 		}
 		if deps.Orders != nil && deps.OrderDB != nil {
 			registerOrders(v1, deps.Auth, deps.OrderDB, deps.Orders)

@@ -100,6 +100,35 @@ func (s *Store) Create(ctx context.Context, in NewUser) (*User, error) {
 	return u, err
 }
 
+// List returns every user, active ones first, then by name.
+func (s *Store) List(ctx context.Context) ([]User, error) {
+	rows, err := s.pool.Query(ctx,
+		`SELECT `+userColumns+` FROM users ORDER BY active DESC, lower(name), id`)
+	if err != nil {
+		return nil, err
+	}
+	out, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (User, error) {
+		u, err := scanUser(row)
+		if err != nil {
+			return User{}, err
+		}
+		return *u, nil
+	})
+	if out == nil {
+		out = []User{}
+	}
+	return out, err
+}
+
+// Update changes a user's name, role and active flag. The database trigger
+// refuses to demote or deactivate the last active admin.
+func (s *Store) Update(ctx context.Context, id, name string, role Role, active bool) (*User, error) {
+	row := s.pool.QueryRow(ctx,
+		`UPDATE users SET name = $2, role = $3, active = $4 WHERE id::text = $1 RETURNING `+userColumns,
+		id, strings.TrimSpace(name), string(role), active)
+	return scanUser(row)
+}
+
 // Requester is a person that can be picked as "Requested By".
 type Requester struct {
 	ID   string `json:"id"`

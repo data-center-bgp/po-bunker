@@ -110,6 +110,27 @@ Rules (ported from the Supabase functions; each operation is one transaction):
   cancelled or have documents changed (`409 order_not_submitted`); completing without a DO is `409 do_required`.
 - Money and quantities are JSON numbers in responses; send numbers or numeric strings.
 
+## Vessel sync and user management (phase 4)
+
+| Endpoint | Who | Does |
+| --- | --- | --- |
+| `POST /vessels/sync` | admin, staff | pulls the ship list from the SMS API (`VESSEL_API_URL`, `VESSEL_API_TOKEN`) and applies it |
+| `PUT /vessels/:id/code` | admin | sets the short code printed in the Vessel column of the PO (`{ "code": "BB99" }`, blank clears it) |
+| `GET /users`, `POST /users` | admin | list; create with `email`, `name`, `role`, `password` (they can sign in at once) |
+| `PUT /users/:id` | admin | `name`, `role`, `active` (all three required) |
+| `POST /users/:id/reset-password` | admin | `{ "password": "..." }`; ends that user's sessions |
+
+**Sync rules** (ported from the Edge Function and `sync_vessels`): the key is the API's id (`external_id`); a hand-made vessel
+with the same name is adopted; the ship type is matched by code, then by name, otherwise created; vessels that disappeared
+from the API are deactivated (never deleted, and only ones that came from the API); an empty or unusable list is refused and
+changes nothing; `code`, tonnage, IMO, call sign, operator and owner are never overwritten. It follows `links.next`,
+`next_page_url`, `next` or `meta.last_page`, reads at most 50 pages, never sends the token to another host, and only one
+sync runs at a time (`409 sync_in_progress`). The token is never logged.
+
+**User rules:** an admin can rename themselves but not change their own role or deactivate themselves
+(`409 cannot_change_self`); the last active admin cannot be demoted or deactivated (`409 last_admin`). Deactivating a user,
+changing their role or resetting their password takes effect on their next request. Passwords are 8 to 72 bytes.
+
 ## Deploy
 
 `deploy/docker-compose.yml` runs Postgres and this API; Nginx proxies `/api/` to `127.0.0.1:8080`

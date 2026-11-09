@@ -14,6 +14,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/data-center-bgp/po-bunker/backend/internal/accounts"
 	"github.com/data-center-bgp/po-bunker/backend/internal/auth"
 	"github.com/data-center-bgp/po-bunker/backend/internal/catalog"
 	"github.com/data-center-bgp/po-bunker/backend/internal/config"
@@ -21,6 +22,7 @@ import (
 	"github.com/data-center-bgp/po-bunker/backend/internal/orders"
 	"github.com/data-center-bgp/po-bunker/backend/internal/testdb"
 	"github.com/data-center-bgp/po-bunker/backend/internal/users"
+	"github.com/data-center-bgp/po-bunker/backend/internal/vessels"
 )
 
 const secret = "0123456789abcdef0123456789abcdef"
@@ -31,6 +33,8 @@ type env struct {
 	users *users.Store
 	files *files.Store
 	dir   string
+	// sms answers the fake SMS vessel API; tests replace it.
+	sms func(w http.ResponseWriter, r *http.Request)
 }
 
 func newEnv(t *testing.T, accessTTL time.Duration) *env {
@@ -42,6 +46,14 @@ func newEnv(t *testing.T, accessTTL time.Duration) *env {
 	if err != nil {
 		t.Fatal(err)
 	}
+	e := &env{}
+	e.sms = func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"data":[{"id":1,"name":"TB One","ship_type":{"code":"TB","name":"Tug"}},{"id":2,"name":"TB Two"}]}`))
+	}
+	smsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { e.sms(w, r) }))
+	t.Cleanup(smsServer.Close)
+
 	dir := t.TempDir()
 	fileStore, err := files.New(dir, secret)
 	if err != nil {
@@ -50,7 +62,9 @@ func newEnv(t *testing.T, accessTTL time.Duration) *env {
 	r, err := NewRouter(
 		config.Config{Env: "development", CookieSecure: true, TrustedProxies: []string{"127.0.0.1"}},
 		Deps{DB: pool, Auth: svc, Catalog: catalog.NewStore(pool), Users: us, Files: fileStore,
-			Orders: orders.NewService(pool, orders.NewStore(pool), fileStore), OrderDB: orders.NewStore(pool)},
+			Orders: orders.NewService(pool, orders.NewStore(pool), fileStore), OrderDB: orders.NewStore(pool),
+			Accounts: accounts.New(us, auth.NewRefreshStore(pool, time.Hour), 4),
+			Vessels:  vessels.NewSyncer(pool, vessels.NewClient(smsServer.URL, "test-token-1234"))},
 		slog.New(slog.NewTextHandler(io.Discard, nil)),
 	)
 	if err != nil {
@@ -61,7 +75,8 @@ func newEnv(t *testing.T, accessTTL time.Duration) *env {
 	probe.GET("/any", func(c *gin.Context) { c.JSON(200, gin.H{"ok": true}) })
 	probe.GET("/write", RequireWrite(), func(c *gin.Context) { c.JSON(200, gin.H{"ok": true}) })
 	probe.GET("/admin", RequireAdmin(), func(c *gin.Context) { c.JSON(200, gin.H{"ok": true}) })
-	return &env{r: r, pool: pool, users: us, files: fileStore, dir: dir}
+	e.r, e.pool, e.users, e.files, e.dir = r, pool, us, fileStore, dir
+	return e
 }
 
 func (e *env) addUser(t *testing.T, email string, role users.Role, password string) *users.User {
