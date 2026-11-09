@@ -18,6 +18,8 @@ type APIError struct {
 	Status  int    `json:"-"`
 	Code    string `json:"code"`
 	Message string `json:"message"`
+	// Field names the rejected input field for validation errors.
+	Field string `json:"field,omitempty"`
 }
 
 func (e *APIError) Error() string { return e.Code + ": " + e.Message }
@@ -33,10 +35,12 @@ var (
 	ErrInternal     = NewError(http.StatusInternalServerError, "internal_error", "Something went wrong")
 )
 
-// Fail writes err as the JSON error body and aborts the request. Anything that
-// is not an *APIError is logged and answered as a generic 500, so internals
+// Fail writes err as the JSON error body and aborts the request. Data-layer
+// errors (not found, validation, constraint violations) are converted first.
+// Anything that is still not an *APIError is logged and answered as a generic 500, so internals
 // never leak to the client.
 func Fail(c *gin.Context, err error) {
+	err = asAPIError(err)
 	var apiErr *APIError
 	if !errors.As(err, &apiErr) {
 		slog.Error("unhandled error",

@@ -3,6 +3,7 @@ package httpapi
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"io"
 	"log/slog"
 	"net/http"
 	"time"
@@ -56,7 +57,8 @@ func accessLogMiddleware(log *slog.Logger) gin.HandlerFunc {
 
 // recoveryMiddleware turns a panic into the standard JSON 500.
 func recoveryMiddleware(log *slog.Logger) gin.HandlerFunc {
-	return gin.CustomRecovery(func(c *gin.Context, recovered any) {
+	// Gin's own recovery logger is silenced: we log the panic ourselves, once, as structured JSON.
+	return gin.CustomRecoveryWithWriter(io.Discard, func(c *gin.Context, recovered any) {
 		log.Error("panic recovered",
 			"panic", recovered,
 			"method", c.Request.Method,

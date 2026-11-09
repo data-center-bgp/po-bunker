@@ -19,8 +19,10 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/data-center-bgp/po-bunker/backend/internal/auth"
+	"github.com/data-center-bgp/po-bunker/backend/internal/catalog"
 	"github.com/data-center-bgp/po-bunker/backend/internal/config"
 	"github.com/data-center-bgp/po-bunker/backend/internal/db"
+	"github.com/data-center-bgp/po-bunker/backend/internal/files"
 	"github.com/data-center-bgp/po-bunker/backend/internal/httpapi"
 	"github.com/data-center-bgp/po-bunker/backend/internal/users"
 )
@@ -72,9 +74,10 @@ func run() error {
 		return err
 	}
 
+	userStore := users.NewStore(pool)
 	refreshStore := auth.NewRefreshStore(pool, cfg.RefreshTokenTTL)
 	authService, err := auth.NewService(
-		users.NewStore(pool),
+		userStore,
 		auth.NewTokenIssuer(cfg.JWTSecret, cfg.AccessTokenTTL),
 		refreshStore,
 		auth.Options{},
@@ -84,7 +87,18 @@ func run() error {
 	}
 	go purgeExpiredTokens(ctx, refreshStore, log)
 
-	router, err := httpapi.NewRouter(cfg, httpapi.Deps{DB: pool, Auth: authService}, log)
+	fileStore, err := files.New(cfg.FilesDir, cfg.FileSigningSecret)
+	if err != nil {
+		return fmt.Errorf("file storage: %w", err)
+	}
+
+	router, err := httpapi.NewRouter(cfg, httpapi.Deps{
+		DB:      pool,
+		Auth:    authService,
+		Catalog: catalog.NewStore(pool),
+		Users:   userStore,
+		Files:   fileStore,
+	}, log)
 	if err != nil {
 		return fmt.Errorf("router: %w", err)
 	}

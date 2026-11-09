@@ -100,6 +100,29 @@ func (s *Store) Create(ctx context.Context, in NewUser) (*User, error) {
 	return u, err
 }
 
+// Requester is a person that can be picked as "Requested By".
+type Requester struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+// ListRequesters returns the active users (id and name only).
+func (s *Store) ListRequesters(ctx context.Context) ([]Requester, error) {
+	rows, err := s.pool.Query(ctx, `SELECT id::text, name FROM users WHERE active ORDER BY name, id`)
+	if err != nil {
+		return nil, err
+	}
+	out, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (Requester, error) {
+		var r Requester
+		err := row.Scan(&r.ID, &r.Name)
+		return r, err
+	})
+	if out == nil {
+		out = []Requester{}
+	}
+	return out, err
+}
+
 func (s *Store) SetPassword(ctx context.Context, id, hash string) error {
 	tag, err := s.pool.Exec(ctx, `UPDATE users SET password_hash = $2 WHERE id::text = $1`, id, hash)
 	if err != nil {

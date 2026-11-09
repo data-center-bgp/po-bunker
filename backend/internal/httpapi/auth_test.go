@@ -15,7 +15,9 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/data-center-bgp/po-bunker/backend/internal/auth"
+	"github.com/data-center-bgp/po-bunker/backend/internal/catalog"
 	"github.com/data-center-bgp/po-bunker/backend/internal/config"
+	"github.com/data-center-bgp/po-bunker/backend/internal/files"
 	"github.com/data-center-bgp/po-bunker/backend/internal/testdb"
 	"github.com/data-center-bgp/po-bunker/backend/internal/users"
 )
@@ -26,6 +28,8 @@ type env struct {
 	r     *gin.Engine
 	pool  *pgxpool.Pool
 	users *users.Store
+	files *files.Store
+	dir   string
 }
 
 func newEnv(t *testing.T, accessTTL time.Duration) *env {
@@ -37,9 +41,14 @@ func newEnv(t *testing.T, accessTTL time.Duration) *env {
 	if err != nil {
 		t.Fatal(err)
 	}
+	dir := t.TempDir()
+	fileStore, err := files.New(dir, secret)
+	if err != nil {
+		t.Fatal(err)
+	}
 	r, err := NewRouter(
 		config.Config{Env: "development", CookieSecure: true, TrustedProxies: []string{"127.0.0.1"}},
-		Deps{DB: pool, Auth: svc},
+		Deps{DB: pool, Auth: svc, Catalog: catalog.NewStore(pool), Users: us, Files: fileStore},
 		slog.New(slog.NewTextHandler(io.Discard, nil)),
 	)
 	if err != nil {
@@ -50,7 +59,7 @@ func newEnv(t *testing.T, accessTTL time.Duration) *env {
 	probe.GET("/any", func(c *gin.Context) { c.JSON(200, gin.H{"ok": true}) })
 	probe.GET("/write", RequireWrite(), func(c *gin.Context) { c.JSON(200, gin.H{"ok": true}) })
 	probe.GET("/admin", RequireAdmin(), func(c *gin.Context) { c.JSON(200, gin.H{"ok": true}) })
-	return &env{r: r, pool: pool, users: us}
+	return &env{r: r, pool: pool, users: us, files: fileStore, dir: dir}
 }
 
 func (e *env) addUser(t *testing.T, email string, role users.Role, password string) *users.User {

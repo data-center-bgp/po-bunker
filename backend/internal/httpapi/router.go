@@ -10,7 +10,10 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/data-center-bgp/po-bunker/backend/internal/auth"
+	"github.com/data-center-bgp/po-bunker/backend/internal/catalog"
 	"github.com/data-center-bgp/po-bunker/backend/internal/config"
+	"github.com/data-center-bgp/po-bunker/backend/internal/files"
+	"github.com/data-center-bgp/po-bunker/backend/internal/users"
 )
 
 // Pinger is what the health check needs from the database pool.
@@ -20,8 +23,11 @@ type Pinger interface {
 
 // Deps are the services the handlers use. It grows with each phase.
 type Deps struct {
-	DB   Pinger
-	Auth *auth.Service
+	DB      Pinger
+	Auth    *auth.Service
+	Catalog *catalog.Store
+	Users   *users.Store
+	Files   *files.Store
 }
 
 // NewRouter builds the Gin engine. It uses gin.New(), not gin.Default(), so
@@ -32,6 +38,7 @@ func NewRouter(cfg config.Config, deps Deps, log *slog.Logger) (*gin.Engine, err
 	}
 
 	r := gin.New()
+	r.MaxMultipartMemory = 8 << 20 // larger uploads spill to disk
 	if err := r.SetTrustedProxies(cfg.TrustedProxies); err != nil {
 		return nil, err
 	}
@@ -50,6 +57,10 @@ func NewRouter(cfg config.Config, deps Deps, log *slog.Logger) (*gin.Engine, err
 	v1 := r.Group("/api/v1")
 	if deps.Auth != nil {
 		registerAuth(v1, deps.Auth, cfg.CookieSecure)
+		if deps.Catalog != nil && deps.Users != nil && deps.Files != nil {
+			registerCatalog(v1, deps.Auth, deps.Catalog, deps.Users, deps.Files)
+			registerFiles(v1, deps.Auth, deps.Files)
+		}
 	}
 
 	return r, nil

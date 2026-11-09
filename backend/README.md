@@ -61,6 +61,28 @@ pair, `POST /auth/logout` ends the session, `GET /auth/me` returns the user, `PO
 password and ends the other sessions. The middleware reads the user from the database on every request, so deactivating a
 user or changing a role takes effect immediately. Login attempts are rate limited per IP and per IP + email.
 
+## Master data and files (phase 2)
+
+All under `/api/v1`, signed in. List endpoints return plain JSON arrays shaped like the types in
+`src/services/types.ts`. Everyone reads; admin and staff write; nobody deletes.
+
+| Resource | Endpoints |
+| --- | --- |
+| companies | `GET/POST /companies`, `PUT /companies/:id`, `PUT /companies/:id/logo` (multipart `file`, PNG/JPG, 1 MB) |
+| partners, regions | `GET/POST /partners`, `PUT /partners/:id` (same for `/regions`) |
+| products | `GET/POST /products` (`?active=true`), `PUT /products/:id` |
+| units, code budgets | `GET/POST /uoms`, `PUT /uoms/:id`; `GET/POST /code-budgets` (`?active=true`), `PUT /code-budgets/:id` |
+| read only | `GET /business-units`, `/product-categories`, `/vessels` (written by the SMS sync), `/requesters` (active users) |
+
+`PUT` replaces every editable field (a missing `active` is an error, not `false`). Unknown JSON fields are refused.
+Validation answers `422 validation_failed` with the `field`; a duplicate is `409 duplicate`; a reference to a missing record
+is `422 invalid_reference`.
+
+Files live under `FILES_DIR` as `logos/<company id>/<ms>.<ext>` (and `documents/<order id>/...` from phase 3). The type is
+decided from the file's bytes, never from its name or the client's Content-Type. `GET /file-url?path=...` (signed in)
+returns a link valid for one hour; `GET /files/<path>?exp=...&sig=...` serves the file without a login, because `<img>`
+and PDF viewers cannot send an Authorization header.
+
 ## Deploy
 
 `deploy/docker-compose.yml` runs Postgres and this API; Nginx proxies `/api/` to `127.0.0.1:8080`
