@@ -18,8 +18,11 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/data-center-bgp/po-bunker/backend/internal/auth"
 	"github.com/data-center-bgp/po-bunker/backend/internal/config"
+	"github.com/data-center-bgp/po-bunker/backend/internal/db"
 	"github.com/data-center-bgp/po-bunker/backend/internal/httpapi"
+	"github.com/data-center-bgp/po-bunker/backend/internal/users"
 )
 
 func main() {
@@ -65,7 +68,23 @@ func run() error {
 		return fmt.Errorf("database unreachable: %w", err)
 	}
 
-	router, err := httpapi.NewRouter(cfg, httpapi.Deps{DB: pool}, log)
+	if err := db.Migrate(ctx, pool, log); err != nil {
+		return err
+	}
+
+	refreshStore := auth.NewRefreshStore(pool, cfg.RefreshTokenTTL)
+	authService, err := auth.NewService(
+		users.NewStore(pool),
+		auth.NewTokenIssuer(cfg.JWTSecret, cfg.AccessTokenTTL),
+		refreshStore,
+		auth.Options{},
+	)
+	if err != nil {
+		return fmt.Errorf("auth service: %w", err)
+	}
+	go purgeExpiredTokens(ctx, refreshStore, log)
+
+	router, err := httpapi.NewRouter(cfg, httpapi.Deps{DB: pool, Auth: authService}, log)
 	if err != nil {
 		return fmt.Errorf("router: %w", err)
 	}
@@ -114,4 +133,22 @@ func healthcheck() int {
 		return 1
 	}
 	return 0
+}
+
+// purgeExpiredTokens removes long-expired refresh tokens once a day.
+func purgeExpiredTokens(ctx context.Context, store *auth.RefreshStore, log *slog.Logger) {
+	ticker := time.NewTicker(24 * time.Hour)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			if n, err := store.DeleteExpired(ctx); err != nil {
+				log.Error("purge refresh tokens", "error", err)
+			} else if n > 0 {
+				log.Info("purged expired refresh tokens", "count", n)
+			}
+		}
+	}
 }

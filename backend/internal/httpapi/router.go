@@ -9,6 +9,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/data-center-bgp/po-bunker/backend/internal/auth"
 	"github.com/data-center-bgp/po-bunker/backend/internal/config"
 )
 
@@ -19,7 +20,8 @@ type Pinger interface {
 
 // Deps are the services the handlers use. It grows with each phase.
 type Deps struct {
-	DB Pinger
+	DB   Pinger
+	Auth *auth.Service
 }
 
 // NewRouter builds the Gin engine. It uses gin.New(), not gin.Default(), so
@@ -44,8 +46,11 @@ func NewRouter(cfg config.Config, deps Deps, log *slog.Logger) (*gin.Engine, err
 
 	r.GET("/healthz", healthHandler(deps.DB))
 
-	// Everything else hangs off /api/v1 and is added by later phases.
-	_ = r.Group("/api/v1")
+	// Everything else hangs off /api/v1 and is added phase by phase.
+	v1 := r.Group("/api/v1")
+	if deps.Auth != nil {
+		registerAuth(v1, deps.Auth, cfg.CookieSecure)
+	}
 
 	return r, nil
 }
