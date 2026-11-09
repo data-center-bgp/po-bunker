@@ -1,0 +1,49 @@
+# PO Bunker API + database for the VPS (see DEPLOY.md and backend/README.md).
+#
+#   cd /opt/po-bunker/deploy
+#   cp .env.example .env     # then fill in real secrets (chmod 600 .env)
+#   docker compose up -d --build
+#
+# Postgres is not published on any port: only the api container can reach it.
+# The api listens on 127.0.0.1:8080 and Nginx proxies /api/ to it.
+name: po-bunker
+
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-po_bunker}
+      POSTGRES_USER: ${POSTGRES_USER:-po_bunker}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in deploy/.env}
+      TZ: Asia/Makassar
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build: ../backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      APP_ENV: production
+      PORT: "8080"
+      DATABASE_URL: postgres://${POSTGRES_USER:-po_bunker}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-po_bunker}?sslmode=disable
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in deploy/.env}
+      FILE_SIGNING_SECRET: ${FILE_SIGNING_SECRET:?set FILE_SIGNING_SECRET in deploy/.env}
+      VESSEL_API_TOKEN: ${VESSEL_API_TOKEN:-}
+      FILES_DIR: /data/files
+    volumes:
+      - files:/data/files
+    ports:
+      - "127.0.0.1:8080:8080"
+
+volumes:
+  pgdata:
+  files:
