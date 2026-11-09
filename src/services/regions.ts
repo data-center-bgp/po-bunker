@@ -1,34 +1,14 @@
-import { supabase } from "@/lib/supabase";
-import { unwrap } from "./helpers";
+import { api } from "@/lib/api";
 import type { Region, RegionInput } from "./types";
 
 export const regionsService = {
-  getRegions: async (): Promise<Region[]> =>
-    unwrap(
-      await supabase
-        .from("regions_view")
-        .select("*")
-        .order("name")
-        .overrideTypes<Region[], { merge: false }>(),
-      "Gagal memuat data wilayah",
-    ),
+  getRegions: (): Promise<Region[]> => api.get<Region[]>("/regions"),
 
   createRegion: async (input: RegionInput): Promise<void> => {
-    unwrap(
-      await supabase.from("regions").insert(input).select("id").single(),
-      "Gagal membuat wilayah",
-    );
+    await api.post<Region>("/regions", input);
   },
 
   updateRegion: async (id: number, input: RegionInput): Promise<void> => {
-    unwrap(
-      await supabase
-        .from("regions")
-        .update(input)
-        .eq("id", id)
-        .select("id")
-        .single(),
-      "Gagal memperbarui wilayah",
-    );
+    await api.put<Region>(`/regions/${id}`, input);
   },
 };

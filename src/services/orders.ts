@@ -1,38 +1,12 @@
-import { supabase } from "@/lib/supabase";
-import { toError, unwrap, unwrapVoid } from "./helpers";
-import { storageService } from "./storage";
+import { api } from "@/lib/api";
 import type {
   OrderDocument,
   OrderHeaderInput,
   OrderLineInput,
+  OrderRemark,
   PurchaseOrder,
   RemarkColor,
 } from "./types";
-
-const ORDER_SELECT = `
-  *,
-  company:companies(id,name,code_company,logo_path),
-  partner:partners(id,name,street,city,phone),
-  creator:created_by(id,name),
-  completer:completed_by(id,name),
-  canceller:cancelled_by(id,name),
-  remarks:purchase_order_remarks(id,order_id,remark_date,color,remark),
-  documents:purchase_order_documents(id,order_id,doc_type,file_path,file_name,mime_type,size_bytes,uploaded_at,uploader:uploaded_by(id,name)),
-  lines:purchase_order_lines(
-    *,
-    product:products(id,name,default_code,merk,model,serial_number,specs),
-    vessel:vessels(id,name,code),
-    region:regions(id,name),
-    uom:uoms(id,name),
-    code_budget:code_budgets(id,name),
-    category:product_categories(id,name),
-    requester:requested_by(id,name)
-  )
-`;
-
-const BY_LINE_ID = { referencedTable: "purchase_order_lines" } as const;
-const BY_REMARK_ID = { referencedTable: "purchase_order_remarks" } as const;
-const BY_DOC_ID = { referencedTable: "purchase_order_documents" } as const;
 
 export const DOCUMENT_TYPES = ["application/pdf", "image/png", "image/jpeg"];
 export const DOCUMENT_MAX_BYTES = 5 * 1024 * 1024;
@@ -47,72 +21,38 @@ export interface ActualQuantity {
   actual_qty: number;
 }
 
-const safeFileName = (name: string) =>
-  name.replace(/[^A-Za-z0-9._-]+/g, "_").slice(-80) || "file";
-
 export const ordersService = {
   getOrders: async (page = 1, limit = 10): Promise<OrdersPage> => {
-    const from = (page - 1) * limit;
-    const { data, error, count } = await supabase
-      .from("purchase_orders")
-      .select(ORDER_SELECT, { count: "exact" })
-      .order("date_order", { ascending: false })
-      .order("id", { ascending: false })
-      .order("id", BY_LINE_ID)
-      .order("id", BY_REMARK_ID)
-      .order("id", BY_DOC_ID)
-      .range(from, from + limit - 1)
-      .overrideTypes<PurchaseOrder[], { merge: false }>();
-    if (error) throw toError(error, "Gagal memuat daftar PO");
-    return { orders: data ?? [], totalCount: count ?? data?.length ?? 0 };
+    const res = await api.get<{ orders: PurchaseOrder[]; total_count: number }>(
+      "/orders",
+      { page, limit },
+    );
+    return { orders: res.orders, totalCount: res.total_count };
   },
 
-  getOrderById: async (id: number): Promise<PurchaseOrder> =>
-    unwrap(
-      await supabase
-        .from("purchase_orders")
-        .select(ORDER_SELECT)
-        .eq("id", id)
-        .order("id", BY_LINE_ID)
-        .order("id", BY_REMARK_ID)
-        .order("id", BY_DOC_ID)
-        .single<PurchaseOrder>(),
-      "Gagal memuat PO",
-    ),
+  getOrderById: (id: number): Promise<PurchaseOrder> =>
+    api.get<PurchaseOrder>(`/orders/${id}`),
 
   // Submits a new order. A submitted order is locked: to fix a mistake, cancel
   // it and create a new one.
   createOrder: async (
     header: OrderHeaderInput,
     lines: OrderLineInput[],
-  ): Promise<number> => {
-    const { data, error } = await supabase.rpc("save_purchase_order", {
-      p_id: null,
-      p_header: header,
-      p_lines: lines,
-    });
-    if (error) throw toError(error, "Gagal membuat PO");
-    return (data as { id: number }).id;
-  },
+  ): Promise<number> =>
+    (await api.post<PurchaseOrder>("/orders", { ...header, lines })).id,
 
   // Needs at least one Delivery Order file and an actual quantity per line.
   completeOrder: async (
     id: number,
     quantities: ActualQuantity[],
   ): Promise<void> => {
-    const { error } = await supabase.rpc("complete_purchase_order", {
-      p_id: id,
-      p_lines: quantities,
+    await api.post<PurchaseOrder>(`/orders/${id}/complete`, {
+      lines: quantities,
     });
-    if (error) throw toError(error, "Gagal menyelesaikan PO");
   },
 
   cancelOrder: async (id: number, reason: string): Promise<void> => {
-    const { error } = await supabase.rpc("cancel_purchase_order", {
-      p_id: id,
-      p_reason: reason,
-    });
-    if (error) throw toError(error, "Gagal membatalkan PO");
+    await api.post<PurchaseOrder>(`/orders/${id}/cancel`, { reason });
   },
 
   // --- Delivery Order files (only while the order is submitted) ---------------
@@ -124,33 +64,11 @@ export const ordersService = {
     if (file.size > DOCUMENT_MAX_BYTES) {
       throw new Error("Ukuran file harus kurang dari 5 MB.");
     }
-    const path = `documents/${orderId}/${Date.now()}-${safeFileName(file.name)}`;
-    await storageService.uploadFile(path, file);
-    const { error } = await supabase.from("purchase_order_documents").insert({
-      order_id: orderId,
-      doc_type: "delivery_order",
-      file_path: path,
-      file_name: file.name,
-      mime_type: file.type,
-      size_bytes: file.size,
-    });
-    if (error) {
-      await storageService.removeFile(path);
-      throw toError(error, "Gagal melampirkan dokumen");
-    }
+    await api.upload<OrderDocument>("POST", `/orders/${orderId}/documents`, file);
   },
 
   deleteDocument: async (doc: OrderDocument): Promise<void> => {
-    const { data, error } = await supabase
-      .from("purchase_order_documents")
-      .delete()
-      .eq("id", doc.id)
-      .select("id");
-    unwrapVoid({ error }, "Gagal menghapus dokumen");
-    if (!data || data.length === 0) {
-      throw new Error("Dokumen ini tidak dapat dihapus lagi.");
-    }
-    await storageService.removeFile(doc.file_path);
+    await api.delete<void>(`/orders/${doc.order_id}/documents/${doc.id}`);
   },
 
   // --- Remarks (any order state) ------------------------------------------------
@@ -161,26 +79,14 @@ export const ordersService = {
     color: RemarkColor,
     remarkDate: string,
   ): Promise<void> => {
-    unwrapVoid(
-      await supabase.from("purchase_order_remarks").insert({
-        order_id: orderId,
-        remark,
-        color,
-        remark_date: remarkDate,
-      }),
-      "Gagal menambahkan remark",
-    );
+    await api.post<OrderRemark>(`/orders/${orderId}/remarks`, {
+      remark,
+      color,
+      remark_date: remarkDate,
+    });
   },
 
-  deleteRemark: async (remarkId: number): Promise<void> => {
-    const { data, error } = await supabase
-      .from("purchase_order_remarks")
-      .delete()
-      .eq("id", remarkId)
-      .select("id");
-    unwrapVoid({ error }, "Gagal menghapus remark");
-    if (!data || data.length === 0) {
-      throw new Error("Remark tidak dapat dihapus.");
-    }
+  deleteRemark: async (orderId: number, remarkId: number): Promise<void> => {
+    await api.delete<void>(`/orders/${orderId}/remarks/${remarkId}`);
   },
 };

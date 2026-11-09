@@ -36,7 +36,7 @@
 
 | Capability                | Description                                           |
 | ------------------------- | ----------------------------------------------------- |
-| Authentication            | Supabase Auth email/password login, role-based access |
+| Authentication            | Email/password login (JWT + refresh cookie), role-based access |
 | Purchase Order Management | Full CRUD — create, view, edit, and delete POs        |
 | Status Workflow           | Submitted → Completed (DO + actual quantity) or Cancelled (with reason) |
 | Multi-line Orders         | Each PO supports multiple product line items          |
@@ -60,8 +60,8 @@
 | **HTML Sanitization** | DOMPurify (prevents XSS)                                     |
 | **Excel Generation**  | xlsx (SheetJS, in the browser)                               |
 | **State Management**  | React Context API + `useState` / `useEffect`                 |
-| **Backend**           | Supabase (Postgres + Auth), `po_bunker` schema               |
-| **Data Client**       | `@supabase/supabase-js`                                      |
+| **Backend**           | Go (Gin) API + PostgreSQL, in `backend/`                     |
+| **Data Client**       | `fetch` wrapper in `src/lib/api.ts`                          |
 | **PDF Generation**    | jsPDF + jspdf-autotable (in the browser)                     |
 
 ---
@@ -71,7 +71,7 @@
 ```
 Browser (React SPA)
        │
-       ├── AuthContext  ──── Supabase Auth session
+       ├── AuthContext  ──── access token in memory + refresh cookie
        │
        ├── Login Page
        │
@@ -85,17 +85,16 @@ Browser (React SPA)
                          ├── ViewOrderModal (detail modal)
                          └── PdfPreviewModal
 
-Service layer (src/services/)  →  supabase-js (src/lib/supabase.ts)
+Service layer (src/services/)  →  API client (src/lib/api.ts)  →  /api/v1  (Nginx → Go API)
        │
-       └── Supabase project CGA, schema `po_bunker`
-             ├── Auth (email/password)  +  po_bunker.profiles (role)
+       └── Go API (backend/)  →  PostgreSQL + files on disk
+             ├── Auth: users, rotating refresh tokens, roles
              ├── Tables: purchase_orders, purchase_order_lines, companies,
              │           partners, regions, vessels, products, code_budgets, ...
-             └── RPC: save_purchase_order, confirm_/cancel_purchase_order,
-                      set_purchase_order_draft
+             └── Rules in Go: PO numbering, totals, submit/complete/cancel
 ```
 
-The frontend is a **Single Page Application (SPA)** that talks to Supabase directly from the browser. Access is enforced in the database with row level security, not in the frontend. There is no custom backend server.
+The frontend is a **Single Page Application (SPA)** that talks to the PO Bunker API on its own origin. Access is enforced by the API (a role check on every request), not by hiding buttons in the frontend.
 
 ---
 
@@ -116,14 +115,12 @@ cd po-bunker
 # Install dependencies
 npm install
 
-# Configure Supabase (URL + anon key)
-cp .env.example .env
-
-# Start the development server
+# Start the API first (see backend/README.md), then the development server
 npm run dev
 ```
 
-The app will be available at `http://localhost:5173`.
+The app will be available at `http://localhost:5173`; the dev server forwards `/api` to the API on `http://127.0.0.1:8080`
+(override with `VITE_PROXY_TARGET`).
 
 ### Build for Production
 
@@ -131,7 +128,7 @@ The app will be available at `http://localhost:5173`.
 npm run build
 ```
 
-Output is placed in the `dist/` folder: a static site that can be served by any web server. Nothing needs to be proxied. Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` before building. See `supabase/README.md` for the database setup.
+Output is placed in the `dist/` folder: a static site. In production Nginx serves it and proxies `/api/` to the API, so no build-time configuration is needed. See `DEPLOY.md` and `backend/README.md`.
 
 ---
 
@@ -147,11 +144,11 @@ Output is placed in the `dist/` folder: a static site that can be served by any 
 **Validation rules:**
 
 - Email must be a valid email format.
-- Password must be at least 6 characters.
+- Password is required.
 
-Your account also needs an active profile in the app (an administrator creates it). A valid Supabase account without a profile is signed out again with an "access" message.
+An administrator creates your account on the **Pengguna** page and gives you a starting password; change it from the account menu (bottom left, *Ubah kata sandi*). Too many wrong attempts are answered with a short wait.
 
-On success you are redirected to the **Dashboard**. Supabase keeps the session and refreshes it automatically until you log out.
+On success you are redirected to the **Dashboard**. The session renews itself in the background until you log out, and ends at once if an administrator deactivates your account.
 
 | Role   | Can do                                                        |
 | ------ | ------------------------------------------------------------- |
@@ -311,10 +308,10 @@ They print under the order lines.
 The **Pengguna** page (sidebar, section *Administrasi*) lists everyone with access to PO Bunker: name, email, role,
 status and last sign-in. Admins can:
 
-- **Tambah Pengguna:** give an existing CGA login access by its email, with a role (Admin, Staf or Viewer). The name is
-  optional and defaults to the one on the account. A person without a login must first be created in Supabase
-  (Authentication > Users); logins are shared with other CGA apps, so passwords are not managed here.
-- **Ubah:** change the name or role, or switch access off (the user can no longer open PO Bunker, their PO history stays).
+- **Tambah Pengguna:** create an account with an email, name, role (Admin, Staf or Viewer) and a starting password (there is
+  a button that makes a random one). Tell the user the password; they can change it themselves.
+- **Ubah:** change the name or role, switch access off (the user can no longer open PO Bunker, their PO history stays),
+  or set a new password (*Atur ulang kata sandi*), which also ends that user's sessions.
 - You cannot change your own role or deactivate yourself, and there must always be one active admin.
 
 ---
@@ -331,7 +328,7 @@ status and last sign-in. Admins can:
 
 ## 7. Data Model
 
-The authoritative definition is in `supabase/migrations/0001_schema.sql`. The shapes the frontend uses are in `src/services/types.ts`.
+The authoritative definition is in `backend/migrations/` (`00001_init_schema.sql`). The shapes the frontend uses are in `src/services/types.ts`.
 
 ### Purchase Order (`po_bunker.purchase_orders`)
 
@@ -382,30 +379,34 @@ The authoritative definition is in `supabase/migrations/0001_schema.sql`. The sh
 
 ---
 
-## 8. Backend (Supabase)
+## 8. Backend (Go API)
 
-The app uses one Supabase client (`src/lib/supabase.ts`) scoped to the `po_bunker` schema. Data access lives in `src/services/`.
+The app talks to one API client (`src/lib/api.ts`); data access lives in `src/services/`. The API is in `backend/` (see
+`backend/README.md` for every endpoint, the rules and how to run its tests).
 
 ### Authentication
 
-`supabase.auth.signInWithPassword` with email and password. After sign-in the app reads the user's row in `po_bunker.profiles`; no active profile means no access. Roles: `admin`, `staff`, `viewer`.
+`POST /api/v1/auth/login` with email and password returns a 15-minute access token (kept in memory) and sets a rotating
+refresh token in an `httpOnly`, `SameSite=Strict` cookie. The client renews the access token by itself on a 401 and
+restores the session after a page reload. Roles: `admin`, `staff`, `viewer`; the API reads the user from the database on
+every request, so a deactivation or role change applies immediately.
 
 ### Writes to orders
 
-Orders and lines cannot be inserted or updated directly. The app calls database functions:
+Orders are written only through three operations, each one database transaction:
 
-| RPC                                            | Description                                                   |
-| ---------------------------------------------- | ------------------------------------------------------------- |
-| `save_purchase_order(null, p_header, p_lines)` | Submit a new order (header and lines atomically). Editing an existing order is refused |
-| `complete_purchase_order(p_id, p_lines)`       | Submitted order only; needs >= 1 DO file and an actual quantity for every line |
-| `cancel_purchase_order(p_id, p_reason)`        | Submitted order only; a reason is required                    |
+| Endpoint                          | Description                                                   |
+| --------------------------------- | ------------------------------------------------------------- |
+| `POST /orders`                    | Submit a new order (header and lines together). The PO number and totals are computed on the server. Editing a submitted order is not possible |
+| `POST /orders/:id/complete`       | Submitted order only; needs >= 1 DO file and an actual quantity for every line |
+| `POST /orders/:id/cancel`         | Submitted order only; a reason is required                    |
 
-Delivery Order files are added and removed with plain inserts/deletes on `purchase_order_documents` (and the storage
-bucket), allowed only while the order is submitted. Orders cannot be deleted from the app.
+Delivery Order files are uploaded with `POST /orders/:id/documents` (PDF, PNG or JPG, 5 MB, checked by the file's content)
+and deleted with `DELETE /orders/:id/documents/:docId`, only while the order is submitted. Orders cannot be deleted.
 
 ### Reference data
 
-Companies, partners and regions can be created and edited from the app. **Vessels** are synced from the company SMS vessel API: an admin or staff user presses *Sync from SMS* on the Vessels page (an Edge Function holds the API token; vessels that disappear from the API are deactivated, never deleted; inactive vessels can no longer be picked on new orders). **Products, units of measure and code budgets** have their own screens (*Produk*, *Satuan*, *Kode Budget*, section Data Master) where admins and staff can add and edit them (viewers only read). Products and code budgets are deactivated instead of deleted; nothing is deleted from the app. Categories and business units are still managed in Supabase (admin only; see `supabase/README.md` for CSV import).
+Companies, partners and regions can be created and edited from the app. **Vessels** are synced from the company SMS vessel API: an admin or staff user presses *Sync from SMS* on the Vessels page (the API token stays on the server; vessels that disappear from the API are deactivated, never deleted; inactive vessels can no longer be picked on new orders). **Products, units of measure and code budgets** have their own screens (*Produk*, *Satuan*, *Kode Budget*, section Data Master) where admins and staff can add and edit them (viewers only read). Products and code budgets are deactivated instead of deleted; nothing is deleted from the app. Categories and business units are managed in the database (admin only).
 
 ### Export
 
@@ -417,13 +418,13 @@ PDF (jsPDF) and Excel (ExcelJS) are generated in the browser from the order data
 
 | Measure                 | Implementation                                                                                                      |
 | ----------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| **Authentication**      | Supabase Auth; the session is stored by supabase-js and refreshed automatically                                     |
-| **Authorization**       | Row level security on every `po_bunker` table, scoped to users with an active profile; writes limited by role       |
-| **Order integrity**     | No direct INSERT/UPDATE on orders; the state machine and totals are enforced in database functions and triggers     |
+| **Authentication**      | bcrypt passwords, short-lived JWT access tokens, rotating refresh tokens (stored hashed); login attempts are rate limited |
+| **Authorization**       | A role check on every endpoint; the user is re-read from the database per request (deactivation applies at once)    |
+| **Order integrity**     | Orders change only through the three transactional operations; numbering, totals and the state machine live in Go with database CHECK constraints as a backstop |
+| **Files**               | Type decided from the file's bytes, size limits, fixed path layout (no traversal), downloads through short-lived signed links |
 | **XSS prevention**      | Order notes (HTML) are sanitized with **DOMPurify** before rendering                                                |
-| **Input validation**    | Client-side form validation plus database CHECK constraints (order type, state, quantity, priority)                 |
-| **Keys**                | Only the public anon key is in the frontend bundle. The service role key must never be used in the browser or committed. |
-| **Shared project**      | The Supabase project is shared with other apps; policies require a `po_bunker.profiles` row so other apps' users get nothing |
+| **Input validation**    | Strict JSON (unknown fields refused), server-side validation with stable error codes, plus database CHECK constraints |
+| **Secrets**             | JWT and file-signing secrets and the SMS API token are environment variables on the server; the browser holds none  |
 
 ---
 
@@ -453,18 +454,20 @@ po-bunker/
 │   ├── contexts/
 │   │   ├── AuthContext.tsx                # Auth state provider
 │   │   └── useAuth.ts                     # Auth context hook
-│   ├── services/                          # Supabase data access
-│   │   ├── orders.ts                      # Orders, lines, state changes (RPC)
-│   │   ├── companies.ts, partners.ts, regions.ts, lookups.ts
-│   │   ├── types.ts                       # Row shapes used by the UI
-│   │   └── helpers.ts                     # Error mapping
+│   ├── services/                          # API calls (same function names as before)
+│   │   ├── orders.ts                      # Orders, documents, remarks, complete/cancel
+│   │   ├── companies.ts, partners.ts, regions.ts, lookups.ts, catalog.ts, users.ts, auth.ts, storage.ts
+│   │   ├── types.ts                       # Shapes returned by the API
+│   │   └── helpers.ts                     # Re-exports ApiError
 │   └── lib/
-│       ├── supabase.ts                    # Supabase client (po_bunker schema)
+│       ├── api.ts                         # fetch wrapper: token, silent refresh, ApiError
+│       ├── apiErrors.ts                   # API error codes -> Indonesian messages
 │       ├── exportOrder.ts                 # PDF + Excel generation
 │       └── utils.ts                       # Utility helpers (cn, etc.)
 ├── index.html
 ├── vite.config.ts                         # Vite config
-├── supabase/                              # Migrations, import templates, DB README
+├── backend/                               # The Go API (see backend/README.md)
+├── supabase/                              # Previous backend: kept for reference and the data import
 ├── tsconfig.json
 ├── package.json
 └── DOCUMENTATION.md

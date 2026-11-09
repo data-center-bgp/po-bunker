@@ -194,8 +194,7 @@ const CompanyForm = ({
         companyId = await companiesService.createCompany(payload);
       }
       if (logoFile && companyId) {
-        const path = await storageService.uploadCompanyLogo(companyId, logoFile);
-        await companiesService.setLogo(companyId, path);
+        await storageService.uploadCompanyLogo(companyId, logoFile);
       }
       setLogoFile(null);
       onSuccess();

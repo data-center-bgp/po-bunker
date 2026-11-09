@@ -131,10 +131,11 @@ const UserPage = () => {
       <div className="flex items-start gap-2 rounded-lg border bg-muted/40 p-3 text-sm text-muted-foreground">
         <Info className="mt-0.5 h-4 w-4 shrink-0" />
         <p>
-          Akun login dibuat di Supabase dan dipakai bersama aplikasi CGA lain,
-          sehingga kata sandi tidak diatur di sini. Halaman ini hanya mengatur
-          akses ke PO Bunker: orang baru perlu punya akun login terlebih dahulu,
-          lalu ditambahkan dengan emailnya.
+          Buat akun baru dengan kata sandi awal, lalu sampaikan kepada
+          pengguna. Pengguna dapat menggantinya sendiri dari menu akun di
+          pojok kiri bawah, dan Anda dapat mengatur ulangnya lewat tombol Ubah.
+          Menonaktifkan pengguna atau mengubah perannya berlaku pada permintaan
+          berikutnya.
         </p>
       </div>
 
@@ -220,7 +221,7 @@ const UserPage = () => {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-muted-foreground">
-                      {formatSignIn(u.last_sign_in_at)}
+                      {formatSignIn(u.last_login_at)}
                     </TableCell>
                     <TableCell className="text-right">
                       <Button

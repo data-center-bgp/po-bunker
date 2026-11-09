@@ -44,7 +44,7 @@ const OrderDocuments = ({
   };
 
   const open = async (doc: OrderDocument) => {
-    const url = await storageService.getSignedUrl(doc.file_path, 600);
+    const url = await storageService.getSignedUrl(doc.file_path);
     if (url) window.open(url, "_blank", "noopener");
     else setError("Dokumen tidak dapat dibuka.");
   };

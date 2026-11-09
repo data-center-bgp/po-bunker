@@ -83,7 +83,7 @@ const OrderRemarks = ({ order, onChanged }: OrderRemarksProps) => {
                   className="h-6 w-6 shrink-0 text-destructive"
                   disabled={busy}
                   title="Hapus remark"
-                  onClick={() => run(() => ordersService.deleteRemark(r.id))}
+                  onClick={() => run(() => ordersService.deleteRemark(r.order_id, r.id))}
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </Button>

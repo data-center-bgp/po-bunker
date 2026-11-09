@@ -1,5 +1,4 @@
-import { supabase } from "@/lib/supabase";
-import { toError, unwrap } from "./helpers";
+import { api } from "@/lib/api";
 import type {
   CodeBudget,
   CodeBudgetInput,
@@ -9,85 +8,43 @@ import type {
   Uom,
 } from "./types";
 
-// Maintenance of products, units of measure and code budgets (admin and staff,
-// migration 0010). Unlike lookupsService these also return inactive rows.
-const PRODUCT_SELECT =
-  "*, category:category_id(id,name), uom:uom_id(id,name), code_budget:code_budget_id(id,name)";
-
+// Maintenance of products, units of measure and code budgets (admin and
+// staff). Unlike lookupsService these also return inactive rows.
 export const catalogService = {
-  getProducts: async (): Promise<Product[]> =>
-    unwrap(
-      await supabase
-        .from("products")
-        .select(PRODUCT_SELECT)
-        .order("name")
-        .overrideTypes<Product[], { merge: false }>(),
-      "Gagal memuat data produk",
-    ),
+  getProducts: (): Promise<Product[]> => api.get<Product[]>("/products"),
 
-  getCategories: async (): Promise<ProductCategory[]> =>
-    unwrap(
-      await supabase
-        .from("product_categories")
-        .select("id,name")
-        .order("name")
-        .overrideTypes<ProductCategory[], { merge: false }>(),
-      "Gagal memuat kategori produk",
-    ),
+  getCategories: (): Promise<ProductCategory[]> =>
+    api.get<ProductCategory[]>("/product-categories"),
 
   createProduct: async (input: ProductInput): Promise<void> => {
-    const { error } = await supabase.from("products").insert(input);
-    if (error) throw toError(error, "Gagal membuat produk");
+    await api.post<Product>("/products", input);
   },
 
   updateProduct: async (id: number, input: ProductInput): Promise<void> => {
-    const { error } = await supabase.from("products").update(input).eq("id", id);
-    if (error) throw toError(error, "Gagal memperbarui produk");
+    await api.put<Product>(`/products/${id}`, input);
   },
 
-  getUnits: async (): Promise<Uom[]> =>
-    unwrap(
-      await supabase
-        .from("uoms")
-        .select("id,name")
-        .order("name")
-        .overrideTypes<Uom[], { merge: false }>(),
-      "Gagal memuat data satuan",
-    ),
+  getUnits: (): Promise<Uom[]> => api.get<Uom[]>("/uoms"),
 
   createUnit: async (name: string): Promise<void> => {
-    const { error } = await supabase.from("uoms").insert({ name });
-    if (error) throw toError(error, "Gagal membuat satuan");
+    await api.post<Uom>("/uoms", { name });
   },
 
   updateUnit: async (id: number, name: string): Promise<void> => {
-    const { error } = await supabase.from("uoms").update({ name }).eq("id", id);
-    if (error) throw toError(error, "Gagal memperbarui satuan");
+    await api.put<Uom>(`/uoms/${id}`, { name });
   },
 
-  getCodeBudgets: async (): Promise<CodeBudget[]> =>
-    unwrap(
-      await supabase
-        .from("code_budgets")
-        .select("id,name,code,active")
-        .order("name")
-        .overrideTypes<CodeBudget[], { merge: false }>(),
-      "Gagal memuat kode budget",
-    ),
+  getCodeBudgets: (): Promise<CodeBudget[]> =>
+    api.get<CodeBudget[]>("/code-budgets"),
 
   createCodeBudget: async (input: CodeBudgetInput): Promise<void> => {
-    const { error } = await supabase.from("code_budgets").insert(input);
-    if (error) throw toError(error, "Gagal membuat kode budget");
+    await api.post<CodeBudget>("/code-budgets", input);
   },
 
   updateCodeBudget: async (
     id: number,
     input: CodeBudgetInput,
   ): Promise<void> => {
-    const { error } = await supabase
-      .from("code_budgets")
-      .update(input)
-      .eq("id", id);
-    if (error) throw toError(error, "Gagal memperbarui kode budget");
+    await api.put<CodeBudget>(`/code-budgets/${id}`, input);
   },
 };

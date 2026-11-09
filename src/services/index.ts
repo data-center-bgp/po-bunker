@@ -3,6 +3,7 @@ export * from "./orders";
 export * from "./dashboard";
 export * from "./users";
 export * from "./catalog";
+export * from "./auth";
 export * from "./companies";
 export * from "./partners";
 export * from "./regions";

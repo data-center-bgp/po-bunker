@@ -1,5 +1,5 @@
-// Row shapes returned by the po_bunker schema (see supabase/migrations).
-// Nested objects come from PostgREST embeds in the service queries.
+// Row shapes returned by the PO Bunker API (see backend/internal/*/types.go).
+// Nested objects (company, partner, lines, ...) are embedded by the API.
 
 export interface Ref {
   id: number;
@@ -66,7 +66,7 @@ export interface AppUser {
   role: UserRole;
   active: boolean;
   created_at: string;
-  last_sign_in_at: string | null;
+  last_login_at: string | null;
 }
 
 export interface Region {
@@ -138,8 +138,6 @@ export interface CompanyInput {
   region_id: number | null;
   currency: string;
   business_unit_id: number | null;
-  /** Only sent when the logo changed. */
-  logo_path?: string | null;
 }
 
 export interface Partner {

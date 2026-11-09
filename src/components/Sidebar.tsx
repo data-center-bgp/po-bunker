@@ -1,4 +1,6 @@
+import { useState } from "react";
 import { useAuth } from "@/contexts/useAuth";
+import ChangePasswordDialog from "@/components/ChangePasswordDialog";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
@@ -18,6 +20,7 @@ import {
   LayoutDashboard,
   ClipboardList,
   LogOut,
+  KeyRound,
   ChevronsLeft,
   ChevronsRight,
   ChevronsUpDown,
@@ -139,6 +142,7 @@ const Sidebar = ({
   onLogout,
 }: SidebarProps) => {
   const { user, isAdmin } = useAuth();
+  const [showPassword, setShowPassword] = useState(false);
   const sections = NAV_SECTIONS.filter((s) => !s.adminOnly || isAdmin);
 
   const getInitials = (email: string) => {
@@ -282,6 +286,15 @@ const Sidebar = ({
               <Separator className="my-1.5" />
               <Button
                 variant="ghost"
+                className="w-full justify-start gap-2"
+                size="sm"
+                onClick={() => setShowPassword(true)}
+              >
+                <KeyRound className="h-4 w-4" />
+                Ubah kata sandi
+              </Button>
+              <Button
+                variant="ghost"
                 className="w-full justify-start gap-2 text-destructive hover:bg-destructive/10 hover:text-destructive"
                 size="sm"
                 onClick={onLogout}
@@ -293,6 +306,10 @@ const Sidebar = ({
           </Popover>
         </div>
       </aside>
+      <ChangePasswordDialog
+        isOpen={showPassword}
+        onClose={() => setShowPassword(false)}
+      />
     </TooltipProvider>
   );
 };
